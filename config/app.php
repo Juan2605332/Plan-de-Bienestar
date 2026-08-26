@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'admin_cedulas' => array_filter(array_map('trim', explode(',', (string) env('ADMIN_CEDULAS', '')))),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

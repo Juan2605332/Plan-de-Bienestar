@@ -1,0 +1,1 @@
+<!DOCTYPE html><html lang="es"><body><h1>¡Feliz cumpleaños, {{ $funcionario->nombres }}!</h1><p>Desde Bienestar SENA te deseamos un día lleno de alegría y éxitos.</p><p>¡Que disfrutes tu día!</p></body></html>
