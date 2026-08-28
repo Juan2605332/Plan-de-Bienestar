@@ -7,7 +7,9 @@ use App\Imports\FuncionariosImport;
 use App\Models\Encuesta;
 use App\Models\Evento;
 use App\Models\EventoInscripcion;
+use App\Models\FuncionarioPerfil;
 use App\Models\PeriodoInscripcion;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -15,11 +17,30 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class AdminController extends Controller
 {
-    public function dashboard(): View
+    public function dashboard(Request $request): View
     {
         $eventos = Evento::withCount('inscripciones')->orderBy('fecha_evento')->get();
+        $funcionarios = FuncionarioPerfil::query()->withCount(['familiares', 'familiares as familiares_a_cargo_count' => fn ($query) => $query->where('es_a_cargo', true)])->where('activo', true)
+            ->when($request->filled('genero'), fn ($query) => $query->where('genero', $request->string('genero')))
+            ->when($request->filled('edad_min'), fn ($query) => $query->whereDate('fecha_nacimiento', '<=', now()->subYears((int) $request->integer('edad_min'))))
+            ->when($request->filled('edad_max'), fn ($query) => $query->whereDate('fecha_nacimiento', '>=', now()->subYears((int) $request->integer('edad_max') + 1)))
+            ->when($request->boolean('padres'), fn ($query) => $query->where('es_padre_madre', true))
+            ->when($request->boolean('a_cargo'), fn ($query) => $query->whereHas('familiares', fn ($familiarQuery) => $familiarQuery->where('es_a_cargo', true)))
+            ->when($request->boolean('cumpleanos'), fn ($query) => $query->whereMonth('fecha_nacimiento', now()->month))
+            ->orderBy('apellidos')->orderBy('nombres')->get();
 
-        return view('admin.dashboard', compact('eventos'));
+        return view('admin.dashboard', compact('eventos', 'funcionarios'));
+    }
+
+    public function calendario(Request $request): View
+    {
+        $mes = min(12, max(1, (int) $request->integer('mes', now('America/Bogota')->month)));
+        $anio = min(2100, max(2020, (int) $request->integer('anio', now('America/Bogota')->year)));
+        $inicio = CarbonImmutable::create($anio, $mes, 1)->startOfMonth();
+        $fin = $inicio->endOfMonth();
+        $eventos = Evento::query()->whereBetween('fecha_evento', [$inicio->toDateString(), $fin->toDateString()])->orderBy('fecha_evento')->get()->groupBy(fn (Evento $evento): string => $evento->fecha_evento->toDateString());
+
+        return view('admin.calendario', compact('eventos', 'inicio', 'fin', 'mes', 'anio'));
     }
 
     public function crearPeriodo(): View
@@ -115,7 +136,7 @@ class AdminController extends Controller
     public function importarFuncionarios(Request $request): RedirectResponse
     {
         $data = $request->validate(['archivo' => ['required', 'file', 'mimes:xlsx,csv', 'max:5120']]);
-        Excel::import(new FuncionariosImport(), $data['archivo']);
+        Excel::import(new FuncionariosImport, $data['archivo']);
 
         return redirect()->route('admin.dashboard')->with('success', 'Funcionarios importados correctamente.');
     }

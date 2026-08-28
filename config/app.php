@@ -55,6 +55,7 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     'admin_cedulas' => array_filter(array_map('trim', explode(',', (string) env('ADMIN_CEDULAS', '')))),
+    'calendar_notification_email' => env('CALENDAR_NOTIFICATION_EMAIL', 'admin@sena.edu.co'),
 
     /*
     |--------------------------------------------------------------------------

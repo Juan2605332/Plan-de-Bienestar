@@ -32,9 +32,25 @@ class FuncionarioController extends Controller
             'talla_camisa' => 'required|string|max:10',
             'talla_pantalon' => 'required|string|max:10',
             'talla_calzado' => 'required|string|max:10',
+            'familiares' => ['nullable', 'array'],
+            'familiares.*.parentesco' => ['required', 'in:HIJO,HIJASTRO,CONYUGE,OTRO'],
+            'familiares.*.nombres' => ['required', 'string', 'max:100'],
+            'familiares.*.apellidos' => ['required', 'string', 'max:100'],
+            'familiares.*.tipo_documento' => ['required', 'string', 'max:10'],
+            'familiares.*.numero_documento' => ['nullable', 'string', 'max:20'],
+            'familiares.*.fecha_nacimiento' => ['required', 'date', 'before_or_equal:today'],
+            'familiares.*.genero' => ['required', 'in:MASCULINO,FEMENINO,OTRO'],
+            'familiares.*.es_a_cargo' => ['nullable', 'boolean'],
         ]);
 
-        $funcionario->update($data);
+        $funcionario->update(collect($data)->except('familiares')->all());
+        $funcionario->familiares()->delete();
+
+        foreach ($data['familiares'] ?? [] as $familiar) {
+            $funcionario->familiares()->create($familiar + ['es_a_cargo' => (bool) ($familiar['es_a_cargo'] ?? false)]);
+        }
+
+        $funcionario->update(['es_padre_madre' => collect($data['familiares'] ?? [])->contains(fn (array $familiar): bool => in_array($familiar['parentesco'], ['HIJO', 'HIJASTRO'], true))]);
 
         return redirect()->route('eventos.index')->with('success', '¡Datos y tallas actualizados correctamente!');
     }

@@ -2,19 +2,20 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\FuncionarioPerfil;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthenticateAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $funcionario = FuncionarioPerfil::find($request->session()->get('funcionario_id'));
-        $cedulas = config('app.admin_cedulas', []);
+        if (! Auth::check()) {
+            return redirect()->route('acceso')->with('mensaje', 'Inicia sesión para continuar.');
+        }
 
-        abort_unless($funcionario !== null && in_array($funcionario->cedula, $cedulas, true), 403);
+        abort_unless(Auth::user()->is_admin, 403);
 
         return $next($request);
     }

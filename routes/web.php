@@ -1,9 +1,10 @@
 <?php
+
 use App\Http\Controllers\AccesoController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\EncuestaController;
-use App\Http\Controllers\FuncionarioController;
 use App\Http\Controllers\EventoInscripcionController;
+use App\Http\Controllers\FuncionarioController;
 use Illuminate\Support\Facades\Route;
 
 // Pantalla principal de acceso por cédula
@@ -22,17 +23,19 @@ Route::middleware(['auth.funcionario'])->group(function () {
     Route::get('/encuestas/{encuesta}', [EncuestaController::class, 'mostrar'])->name('encuestas.mostrar');
     Route::post('/encuestas/{encuesta}', [EncuestaController::class, 'responder'])->name('encuestas.responder');
 
-    Route::middleware('auth.admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
-        Route::get('/periodos/crear', [AdminController::class, 'crearPeriodo'])->name('periodos.crear');
-        Route::post('/periodos', [AdminController::class, 'guardarPeriodo'])->name('periodos.guardar');
-        Route::get('/eventos/crear', [AdminController::class, 'crearEvento'])->name('eventos.crear');
-        Route::post('/eventos', [AdminController::class, 'guardarEvento'])->name('eventos.guardar');
-        Route::get('/eventos/{evento}/inscritos', [AdminController::class, 'inscritos'])->name('inscritos');
-        Route::get('/eventos/{evento}/inscritos/exportar', [AdminController::class, 'exportarInscritos'])->name('inscritos.exportar');
-        Route::get('/eventos/{evento}/encuestas/crear', [AdminController::class, 'crearEncuesta'])->name('encuestas.crear');
-        Route::post('/eventos/{evento}/encuestas', [AdminController::class, 'guardarEncuesta'])->name('encuestas.guardar');
-        Route::get('/funcionarios/importar', [AdminController::class, 'formularioImportar'])->name('funcionarios.importar');
-        Route::post('/funcionarios/importar', [AdminController::class, 'importarFuncionarios'])->name('funcionarios.importar.guardar');
-    });
+});
+
+Route::middleware('auth.admin')->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/calendario', [AdminController::class, 'calendario'])->name('calendario');
+    Route::get('/periodos/crear', [AdminController::class, 'crearPeriodo'])->name('periodos.crear');
+    Route::post('/periodos', [AdminController::class, 'guardarPeriodo'])->name('periodos.guardar');
+    Route::get('/eventos/crear', [AdminController::class, 'crearEvento'])->name('eventos.crear');
+    Route::post('/eventos', [AdminController::class, 'guardarEvento'])->name('eventos.guardar');
+    Route::get('/eventos/{evento}/inscritos', [AdminController::class, 'inscritos'])->name('inscritos');
+    Route::get('/eventos/{evento}/inscritos/exportar', [AdminController::class, 'exportarInscritos'])->name('inscritos.exportar');
+    Route::get('/eventos/{evento}/encuestas/crear', [AdminController::class, 'crearEncuesta'])->name('encuestas.crear');
+    Route::post('/eventos/{evento}/encuestas', [AdminController::class, 'guardarEncuesta'])->name('encuestas.guardar');
+    Route::get('/funcionarios/importar', [AdminController::class, 'formularioImportar'])->name('funcionarios.importar');
+    Route::post('/funcionarios/importar', [AdminController::class, 'importarFuncionarios'])->name('funcionarios.importar.guardar');
 });

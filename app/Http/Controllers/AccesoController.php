@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\FuncionarioPerfil;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class AccesoController extends Controller
@@ -16,22 +16,28 @@ class AccesoController extends Controller
 
     public function ingresar(Request $request): RedirectResponse
     {
-        $data = $request->validate(['cedula' => ['required', 'string', 'max:20']]);
-        $funcionario = FuncionarioPerfil::query()->where('cedula', $data['cedula'])->where('activo', true)->first();
+        $data = $request->validate([
+            'usuario' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string'],
+        ]);
 
-        if ($funcionario === null) {
-            return back()->withInput()->with('mensaje', 'No encontramos un funcionario activo con ese número de documento.');
+        if (! Auth::attempt([
+            'email' => $data['usuario'],
+            'password' => $data['password'],
+            'is_admin' => true,
+        ])) {
+            return back()->withInput($request->only('usuario'))->with('mensaje', 'El usuario o la contraseña no son correctos.');
         }
 
         $request->session()->regenerate();
-        $request->session()->put('funcionario_id', $funcionario->id);
 
-        return redirect()->route('funcionario.formulario');
+        return redirect()->route('admin.dashboard');
     }
 
     public function salir(Request $request): RedirectResponse
     {
-        $request->session()->forget('funcionario_id');
+        Auth::logout();
+        $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect()->route('acceso');
