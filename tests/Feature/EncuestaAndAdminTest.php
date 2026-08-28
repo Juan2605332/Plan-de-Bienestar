@@ -6,6 +6,7 @@ use App\Models\EncuestaPregunta;
 use App\Models\Evento;
 use App\Models\FuncionarioPerfil;
 use App\Models\PeriodoInscripcion;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -100,20 +101,61 @@ test('una encuesta exige sus preguntas obligatorias', function () {
     $this->assertDatabaseMissing('encuesta_respuestas', ['pregunta_id' => $pregunta->id]);
 });
 
-test('solo una cédula configurada puede acceder al panel administrativo', function () {
+test('el administrador puede crear cualquier cantidad de preguntas con tipos y opciones diferentes', function () {
     $this->seed();
-    config(['app.admin_cedulas' => ['9999999999']]);
+    $evento = crearEventoParaEncuesta();
+    $administrador = User::factory()->create(['is_admin' => true]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($administrador)
+        ->get(route('admin.encuestas.crear', $evento))
+        ->assertOk()
+        ->assertSee('Agregar pregunta')
+        ->assertSee('Selección múltiple');
+
+    $this->actingAs($administrador)
+        ->post(route('admin.encuestas.guardar', $evento), [
+            'titulo' => 'Perfil de participación',
+            'preguntas' => [
+                ['enunciado' => 'Cuéntanos tu opinión', 'tipo_pregunta' => 'ABIERTA', 'es_obligatoria' => '1'],
+                ['enunciado' => 'Selecciona tus intereses', 'tipo_pregunta' => 'MULTIPLE', 'opciones' => "Deporte\nCultura\nFamilia", 'es_obligatoria' => '1'],
+                ['enunciado' => '¿Cuál es tu género?', 'tipo_pregunta' => 'GENERO', 'es_obligatoria' => '1'],
+                ['enunciado' => '¿Tienes hijos?', 'tipo_pregunta' => 'HIJOS', 'es_obligatoria' => '0'],
+            ],
+        ])
+        ->assertRedirectToRoute('admin.dashboard');
+
+    $encuesta = Encuesta::where('titulo', 'Perfil de participación')->firstOrFail();
+
+    expect($encuesta->preguntas)->toHaveCount(4);
+    expect($encuesta->preguntas->where('tipo_pregunta', 'MULTIPLE')->first()->opciones)->toHaveCount(3);
+    expect($encuesta->preguntas->where('tipo_pregunta', 'GENERO')->first()->opciones)->toHaveCount(3);
+});
+
+test('solo un usuario administrador puede acceder al panel administrativo', function () {
+    $usuario = User::factory()->create(['is_admin' => false]);
+    $administrador = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($usuario)
         ->get(route('admin.dashboard'))
         ->assertForbidden();
 
-    config(['app.admin_cedulas' => ['1098765432']]);
-
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($administrador)
         ->get(route('admin.dashboard'))
         ->assertOk()
         ->assertSee('Panel administrativo');
+});
+
+test('un administrador puede buscar eventos por nombre, descripción o lugar', function () {
+    $this->seed();
+    $administrador = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($administrador)
+        ->get(route('admin.dashboard', ['buscar_evento' => 'mujeres']))
+        ->assertSee('Espacio de bienestar para mujeres');
+
+    $this->actingAs($administrador)
+        ->get(route('admin.dashboard', ['buscar_evento' => 'no existe']))
+        ->assertDontSee('Espacio de bienestar para mujeres');
 });
 
 test('la importación crea funcionarios y exige un archivo en el panel', function () {
@@ -140,9 +182,9 @@ test('la importación crea funcionarios y exige un archivo en el panel', functio
     expect($funcionario->genero)->toBe('FEMENINO');
     $this->assertDatabaseHas('tipos_cargo', ['nombre' => 'NUEVO CARGO']);
 
-    config(['app.admin_cedulas' => ['1098765432']]);
+    $administrador = User::factory()->create(['is_admin' => true]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($administrador)
         ->post(route('admin.funcionarios.importar.guardar'))
         ->assertSessionHasErrors('archivo');
 });

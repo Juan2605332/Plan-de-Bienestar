@@ -10,11 +10,11 @@ class Evento extends Model
 {
     protected $table = 'eventos';
 
-    protected $fillable = ['periodo_id', 'nombre', 'descripcion', 'fecha_evento', 'lugar', 'cupo_maximo', 'dirigido_a_genero', 'requiere_ser_padre_madre', 'estado'];
+    protected $fillable = ['periodo_id', 'nombre', 'descripcion', 'fecha_evento', 'lugar', 'cupo_maximo', 'dirigido_a_genero', 'requiere_ser_padre_madre', 'requiere_familiar_a_cargo', 'edad_minima', 'edad_maxima', 'estado'];
 
     protected function casts(): array
     {
-        return ['fecha_evento' => 'date', 'cupo_maximo' => 'integer', 'requiere_ser_padre_madre' => 'boolean'];
+        return ['fecha_evento' => 'date', 'cupo_maximo' => 'integer', 'requiere_ser_padre_madre' => 'boolean', 'requiere_familiar_a_cargo' => 'boolean', 'edad_minima' => 'integer', 'edad_maxima' => 'integer'];
     }
 
     public function periodo(): BelongsTo

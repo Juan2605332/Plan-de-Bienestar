@@ -19,7 +19,16 @@ class AdminController extends Controller
 {
     public function dashboard(Request $request): View
     {
-        $eventos = Evento::withCount('inscripciones')->orderBy('fecha_evento')->get();
+        $eventos = Evento::withCount('inscripciones')
+            ->when($request->filled('buscar_evento'), function ($query) use ($request) {
+                $termino = $request->string('buscar_evento')->trim();
+                $query->where(function ($searchQuery) use ($termino) {
+                    $searchQuery->where('nombre', 'like', "%{$termino}%")
+                        ->orWhere('descripcion', 'like', "%{$termino}%")
+                        ->orWhere('lugar', 'like', "%{$termino}%");
+                });
+            })
+            ->orderBy('fecha_evento')->get();
         $funcionarios = FuncionarioPerfil::query()->withCount(['familiares', 'familiares as familiares_a_cargo_count' => fn ($query) => $query->where('es_a_cargo', true)])->where('activo', true)
             ->when($request->filled('genero'), fn ($query) => $query->where('genero', $request->string('genero')))
             ->when($request->filled('edad_min'), fn ($query) => $query->whereDate('fecha_nacimiento', '<=', now()->subYears((int) $request->integer('edad_min'))))
@@ -78,7 +87,10 @@ class AdminController extends Controller
             'cupo_maximo' => ['nullable', 'integer', 'min:1'],
             'dirigido_a_genero' => ['required', 'in:TODOS,MASCULINO,FEMENINO'],
             'requiere_ser_padre_madre' => ['nullable', 'boolean'],
-        ]) + ['requiere_ser_padre_madre' => $request->boolean('requiere_ser_padre_madre'), 'estado' => 'PROGRAMADO']);
+            'edad_minima' => ['nullable', 'integer', 'min:0', 'max:120', 'lte:edad_maxima'],
+            'edad_maxima' => ['nullable', 'integer', 'min:0', 'max:120', 'gte:edad_minima'],
+            'requiere_familiar_a_cargo' => ['nullable', 'boolean'],
+        ]) + ['requiere_ser_padre_madre' => $request->boolean('requiere_ser_padre_madre'), 'requiere_familiar_a_cargo' => $request->boolean('requiere_familiar_a_cargo'), 'estado' => 'PROGRAMADO']);
 
         return redirect()->route('admin.dashboard')->with('success', 'Evento creado correctamente.');
     }
@@ -90,25 +102,38 @@ class AdminController extends Controller
 
     public function guardarEncuesta(Request $request, Evento $evento): RedirectResponse
     {
-        $encuesta = Encuesta::create($request->validate([
+        $data = $request->validate([
             'titulo' => ['required', 'string', 'max:200'],
             'instrucciones' => ['nullable', 'string'],
             'fecha_limite_respuesta' => ['nullable', 'date'],
-        ]) + ['evento_id' => $evento->id, 'activa' => true]);
+            'preguntas' => ['required', 'array', 'min:1'],
+            'preguntas.*.enunciado' => ['required', 'string', 'max:1000'],
+            'preguntas.*.tipo_pregunta' => ['required', 'string', 'in:ABIERTA,MULTIPLE_UNICA,MULTIPLE,ESCALA_1_5,BOOLEANO,NUMERO,FECHA,GENERO,RANGO_EDAD,HIJOS'],
+            'preguntas.*.opciones' => ['nullable', 'string', 'max:5000'],
+            'preguntas.*.es_obligatoria' => ['nullable', 'boolean'],
+        ]);
 
-        foreach ($request->input('preguntas', []) as $indice => $pregunta) {
-            if (blank($pregunta['enunciado'] ?? null)) {
-                continue;
-            }
+        $encuesta = Encuesta::create(collect($data)->except('preguntas')->all() + ['evento_id' => $evento->id, 'activa' => true]);
 
+        foreach ($data['preguntas'] as $indice => $pregunta) {
             $nuevaPregunta = $encuesta->preguntas()->create([
                 'enunciado' => $pregunta['enunciado'],
-                'tipo_pregunta' => $pregunta['tipo_pregunta'] ?? 'ABIERTA',
+                'tipo_pregunta' => $pregunta['tipo_pregunta'],
                 'orden' => $indice + 1,
-                'es_obligatoria' => true,
+                'es_obligatoria' => (bool) ($pregunta['es_obligatoria'] ?? false),
             ]);
 
-            foreach (array_filter(explode("\n", (string) ($pregunta['opciones'] ?? ''))) as $opcion) {
+            $opciones = array_values(array_filter(array_map('trim', explode("\n", (string) ($pregunta['opciones'] ?? '')))));
+            $opciones = $opciones ?: match ($pregunta['tipo_pregunta']) {
+                'ESCALA_1_5' => ['1', '2', '3', '4', '5'],
+                'BOOLEANO' => ['Sí', 'No'],
+                'GENERO' => ['Mujer', 'Hombre', 'Otro'],
+                'RANGO_EDAD' => ['18 a 25 años', '26 a 35 años', '36 a 50 años', 'Más de 50 años'],
+                'HIJOS' => ['Sí', 'No'],
+                default => [],
+            };
+
+            foreach ($opciones as $opcion) {
                 $nuevaPregunta->opciones()->create(['texto_opcion' => trim($opcion)]);
             }
         }

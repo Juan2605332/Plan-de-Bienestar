@@ -16,7 +16,7 @@ class EncuestaController extends Controller
     {
         $encuesta = $this->encuestaDisponible($request, $encuesta);
         $funcionarioId = $request->session()->get('funcionario_id');
-        $respuestas = EncuestaRespuesta::where('funcionario_id', $funcionarioId)->whereIn('pregunta_id', $encuesta->preguntas->pluck('id'))->pluck('opcion_id', 'pregunta_id');
+        $respuestas = EncuestaRespuesta::where('funcionario_id', $funcionarioId)->whereIn('pregunta_id', $encuesta->preguntas->pluck('id'))->get()->keyBy('pregunta_id');
 
         return view('encuestas.responder', compact('encuesta', 'respuestas'));
     }
@@ -42,8 +42,16 @@ class EncuestaController extends Controller
                 $atributos = ['pregunta_id' => $pregunta->id, 'funcionario_id' => $funcionarioId];
                 $valores = ['opcion_id' => null, 'respuesta_texto' => null, 'respuesta_numero' => null];
 
-                if ($pregunta->tipo_pregunta === 'ABIERTA') {
+                if (in_array($pregunta->tipo_pregunta, ['ABIERTA', 'NUMERO', 'FECHA'], true)) {
                     $valores['respuesta_texto'] = (string) $respuesta;
+                    if ($pregunta->tipo_pregunta === 'NUMERO') {
+                        $valores['respuesta_numero'] = (int) $respuesta;
+                    }
+                } elseif ($pregunta->tipo_pregunta === 'MULTIPLE') {
+                    $seleccionadas = is_array($respuesta) ? $respuesta : [];
+                    $opcionesValidas = $pregunta->opciones->whereIn('id', $seleccionadas)->pluck('id')->values()->all();
+                    abort_unless(count($opcionesValidas) === count($seleccionadas), 422, 'Selecciona opciones válidas.');
+                    $valores['respuesta_texto'] = json_encode($opcionesValidas, JSON_THROW_ON_ERROR);
                 } else {
                     $opcion = EncuestaOpcion::where('pregunta_id', $pregunta->id)->findOrFail($respuesta);
                     $valores['opcion_id'] = $opcion->id;
