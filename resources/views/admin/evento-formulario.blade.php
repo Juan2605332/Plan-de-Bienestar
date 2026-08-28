@@ -1,10 +1,172 @@
 @extends('layouts.app')
 @section('title', 'Nuevo evento | Bienestar SENA')
-@section('header-actions')<a href="{{ route('admin.dashboard') }}" class="rounded-lg bg-white/10 px-3 py-2 text-sm text-white">Volver al panel</a>@endsection
+@section('sidebar', true)
 @section('content')
-<div class="mx-auto max-w-3xl"><div class="mb-6"><span class="eyebrow text-xs font-bold uppercase text-[#648273]">Agenda institucional</span><h1 class="mt-2 text-3xl font-semibold">Crear evento</h1><p class="mt-2 text-sm text-[#71847a]">Diseña una actividad y define con precisión quién puede participar.</p></div>
-@if($periodos->isEmpty())<div class="rounded-2xl border border-[#e7d39d] bg-[#fff8e4] p-5 text-sm text-[#7a5b11]">Primero debes crear un período de inscripción.</div>@else
-<form class="space-y-6 rounded-2xl border border-[#d9e5dc] bg-white p-6 shadow-sm" method="POST" action="{{ route('admin.eventos.guardar') }}">@csrf
-<div class="grid gap-5 md:grid-cols-2"><label class="text-sm font-medium">Período<select class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-[#fbfdfb] p-3 outline-none focus:border-[#23734d]" name="periodo_id">@foreach($periodos as $periodo)<option value="{{ $periodo->id }}">{{ $periodo->nombre }}</option>@endforeach</select></label><label class="text-sm font-medium">Nombre<input class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-[#fbfdfb] p-3 outline-none focus:border-[#23734d]" name="nombre" value="{{ old('nombre') }}" required></label><label class="text-sm font-medium md:col-span-2">Descripción<textarea class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-[#fbfdfb] p-3 outline-none focus:border-[#23734d]" name="descripcion" rows="3">{{ old('descripcion') }}</textarea></label><label class="text-sm font-medium">Fecha<input class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-[#fbfdfb] p-3 outline-none focus:border-[#23734d]" name="fecha_evento" type="date" value="{{ old('fecha_evento') }}" required></label><label class="text-sm font-medium">Lugar<input class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-[#fbfdfb] p-3 outline-none focus:border-[#23734d]" name="lugar" value="{{ old('lugar') }}"></label><label class="text-sm font-medium">Cupo máximo<input class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-[#fbfdfb] p-3 outline-none focus:border-[#23734d]" name="cupo_maximo" type="number" min="1" value="{{ old('cupo_maximo') }}"></label></div>
-<div class="rounded-2xl bg-[#f8fbf8] p-5"><div class="mb-4"><span class="eyebrow text-xs font-bold uppercase text-[#648273]">Segmentación</span><h2 class="mt-2 text-lg font-semibold">Define la audiencia</h2><p class="mt-1 text-sm text-[#71847a]">Todos los criterios se aplican al mostrar e inscribir en el evento.</p></div><div class="grid gap-5 md:grid-cols-2"><label class="text-sm font-medium">Género<select class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-white p-3 outline-none focus:border-[#23734d]" name="dirigido_a_genero"><option value="TODOS" @selected(old('dirigido_a_genero', 'TODOS') === 'TODOS')>Todos</option><option value="MASCULINO" @selected(old('dirigido_a_genero') === 'MASCULINO')>Hombres</option><option value="FEMENINO" @selected(old('dirigido_a_genero') === 'FEMENINO')>Mujeres</option></select></label><div></div><label class="text-sm font-medium">Edad mínima <span class="font-normal text-[#71847a]">(opcional)</span><input class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-white p-3 outline-none focus:border-[#23734d]" name="edad_minima" type="number" min="0" max="120" value="{{ old('edad_minima') }}" placeholder="Ej. 18"></label><label class="text-sm font-medium">Edad máxima <span class="font-normal text-[#71847a]">(opcional)</span><input class="mt-2 w-full rounded-xl border border-[#cddbd1] bg-white p-3 outline-none focus:border-[#23734d]" name="edad_maxima" type="number" min="0" max="120" value="{{ old('edad_maxima') }}" placeholder="Ej. 35"></label></div><div class="mt-5 space-y-3"><label class="flex items-center gap-3 rounded-xl border border-[#d9e5dc] bg-white p-4 text-sm font-medium"><input name="requiere_ser_padre_madre" value="1" type="checkbox" @checked(old('requiere_ser_padre_madre')) class="h-4 w-4 rounded border-[#9dbbaa] text-[#1d6b3d]"> Solo padres o madres</label><label class="flex items-center gap-3 rounded-xl border border-[#d9e5dc] bg-white p-4 text-sm font-medium"><input name="requiere_familiar_a_cargo" value="1" type="checkbox" @checked(old('requiere_familiar_a_cargo')) class="h-4 w-4 rounded border-[#9dbbaa] text-[#1d6b3d]"> Personas con familiares a cargo</label></div></div>
-<div class="flex justify-end gap-3 border-t border-[#edf2ee] pt-5"><a href="{{ route('admin.dashboard') }}" class="rounded-xl bg-[#f0f5ef] px-5 py-3 text-sm font-semibold text-[#426b53]">Cancelar</a><button class="rounded-xl bg-[#1d6b3d] px-5 py-3 text-sm font-semibold text-white hover:bg-[#155630]">Crear evento</button></div></form>@endif</div>@endsection
+<style>
+    .form-section {
+        background: var(--surface-card);
+        border: 1px solid var(--border-dark);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .form-section-title {
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: #5a9070;
+        margin-bottom: 1.125rem;
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+    }
+    .form-section-title::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border-dark);
+    }
+    .form-label {
+        display: flex;
+        flex-direction: column;
+        gap: .375rem;
+        font-size: .8rem;
+        font-weight: 600;
+        color: #7aaa90;
+    }
+    .toggle-checkbox {
+        appearance: none;
+        width: 40px; height: 22px;
+        background: rgba(255,255,255,.08);
+        border-radius: 99px;
+        border: 1px solid var(--border-dark);
+        cursor: pointer;
+        transition: background .2s;
+        position: relative;
+        flex-shrink: 0;
+    }
+    .toggle-checkbox::after {
+        content: '';
+        position: absolute;
+        top: 2px; left: 2px;
+        width: 16px; height: 16px;
+        border-radius: 50%;
+        background: #5a9070;
+        transition: left .2s, background .2s;
+    }
+    .toggle-checkbox:checked {
+        background: rgba(168,224,99,.2);
+        border-color: rgba(168,224,99,.4);
+    }
+    .toggle-checkbox:checked::after {
+        left: 20px;
+        background: #a8e063;
+    }
+</style>
+
+<div style="max-width:800px;" class="animate-fade-up">
+    <div style="margin-bottom:1.5rem;">
+        <span class="eyebrow" style="color:#5a9070;">Agenda institucional</span>
+        <h1 style="margin-top:.375rem;font-size:1.6rem;font-weight:800;color:#e8f5ee;letter-spacing:-.02em;">Crear evento</h1>
+        <p style="margin-top:.25rem;font-size:.875rem;color:#5a9070;">Diseña la actividad y define con precisión quién puede participar.</p>
+    </div>
+
+    @if($periodos->isEmpty())
+    <div style="background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.18);color:#f0bf3a;border-radius:.875rem;padding:1.25rem 1.5rem;font-size:.875rem;">
+        <strong>Atención:</strong> Primero debes
+        <a href="{{ route('admin.periodos.crear') }}" style="color:#f0bf3a;font-weight:700;">crear un período de inscripción</a>
+        para poder añadir eventos.
+    </div>
+    @else
+    <form method="POST" action="{{ route('admin.eventos.guardar') }}" style="display:flex;flex-direction:column;gap:1rem;">
+        @csrf
+
+        {{-- Información básica --}}
+        <div class="form-section animate-fade-up-2">
+            <p class="form-section-title">Información básica</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <label class="form-label">
+                    Período de inscripción
+                    <select name="periodo_id" class="field">
+                        @foreach($periodos as $periodo)
+                        <option value="{{ $periodo->id }}">{{ $periodo->nombre }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="form-label">
+                    Nombre del evento
+                    <input class="field" name="nombre" value="{{ old('nombre') }}" required placeholder="Ej. Torneo de fútbol">
+                </label>
+                <label class="form-label" style="grid-column:span 2;">
+                    Descripción
+                    <textarea class="field" name="descripcion" rows="3" placeholder="Describe la actividad brevemente...">{{ old('descripcion') }}</textarea>
+                </label>
+                <label class="form-label">
+                    Fecha del evento
+                    <input class="field" name="fecha_evento" type="date" value="{{ old('fecha_evento') }}" required>
+                </label>
+                <label class="form-label">
+                    Lugar <span style="font-weight:400;color:#3d7055;">(opcional)</span>
+                    <input class="field" name="lugar" value="{{ old('lugar') }}" placeholder="Ej. Auditorio principal">
+                </label>
+                <label class="form-label">
+                    Cupo máximo <span style="font-weight:400;color:#3d7055;">(opcional)</span>
+                    <input class="field" name="cupo_maximo" type="number" min="1" value="{{ old('cupo_maximo') }}" placeholder="Sin límite">
+                </label>
+            </div>
+        </div>
+
+        {{-- Segmentación --}}
+        <div class="form-section animate-fade-up-3">
+            <p class="form-section-title">Segmentación de audiencia</p>
+            <p style="font-size:.8rem;color:#5a9070;margin-bottom:1.25rem;">Todos los criterios se aplican al mostrar e inscribir en el evento.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+                <label class="form-label">
+                    Dirigido a género
+                    <select class="field" name="dirigido_a_genero">
+                        <option value="TODOS"     @selected(old('dirigido_a_genero', 'TODOS') === 'TODOS')>Todos los géneros</option>
+                        <option value="MASCULINO" @selected(old('dirigido_a_genero') === 'MASCULINO')>Solo hombres</option>
+                        <option value="FEMENINO"  @selected(old('dirigido_a_genero') === 'FEMENINO')>Solo mujeres</option>
+                    </select>
+                </label>
+                <div></div>
+                <label class="form-label">
+                    Edad mínima <span style="font-weight:400;color:#3d7055;">(opcional)</span>
+                    <input class="field" name="edad_minima" type="number" min="0" max="120" value="{{ old('edad_minima') }}" placeholder="18">
+                </label>
+                <label class="form-label">
+                    Edad máxima <span style="font-weight:400;color:#3d7055;">(opcional)</span>
+                    <input class="field" name="edad_maxima" type="number" min="0" max="120" value="{{ old('edad_maxima') }}" placeholder="65">
+                </label>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.625rem;">
+                <label style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.125rem;background:rgba(0,0,0,.2);border:1px solid var(--border-dark);border-radius:.75rem;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(168,224,99,.25)'" onmouseout="this.style.borderColor='var(--border-dark)'">
+                    <div>
+                        <span style="font-size:.875rem;font-weight:600;color:#c4ddd0;">Solo padres o madres</span>
+                        <span style="display:block;font-size:.75rem;color:#3d7055;margin-top:.125rem;">El evento está dirigido a funcionarios con hijos registrados</span>
+                    </div>
+                    <input name="requiere_ser_padre_madre" value="1" type="checkbox" @checked(old('requiere_ser_padre_madre')) class="toggle-checkbox">
+                </label>
+                <label style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.125rem;background:rgba(0,0,0,.2);border:1px solid var(--border-dark);border-radius:.75rem;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(168,224,99,.25)'" onmouseout="this.style.borderColor='var(--border-dark)'">
+                    <div>
+                        <span style="font-size:.875rem;font-weight:600;color:#c4ddd0;">Personas con familiares a cargo</span>
+                        <span style="display:block;font-size:.75rem;color:#3d7055;margin-top:.125rem;">Para quienes tienen familiares bajo su responsabilidad</span>
+                    </div>
+                    <input name="requiere_familiar_a_cargo" value="1" type="checkbox" @checked(old('requiere_familiar_a_cargo')) class="toggle-checkbox">
+                </label>
+            </div>
+        </div>
+
+        {{-- Actions --}}
+        <div style="display:flex;justify-content:flex-end;gap:.75rem;" class="animate-fade-up-4">
+            <a href="{{ route('admin.dashboard') }}" class="btn-ghost">Cancelar</a>
+            <button type="submit" class="btn-primary">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Crear evento
+            </button>
+        </div>
+    </form>
+    @endif
+</div>
+@endsection
