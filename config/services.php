@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'dotacion' => [
+        'url' => env('DOTACION_URL'),
+    ],
+
 ];

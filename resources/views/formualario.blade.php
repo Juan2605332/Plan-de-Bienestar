@@ -177,6 +177,7 @@
                 <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 CC {{ $funcionario->cedula }}
             </span>
+            <a href="{{ route('eventos.calendario') }}" class="nav-btn">Calendario</a>
             <a href="{{ route('eventos.index') }}" class="nav-btn">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                 Eventos
@@ -200,8 +201,27 @@
         <p style="margin-top:.25rem;font-size:.875rem;color:#5a7a65;">{{ $funcionario->nombres }} {{ $funcionario->apellidos }}</p>
     </div>
 
+    @if($puedeActualizar)
+    <div role="status" style="margin-bottom:1rem;background:#eaf7f0;border:1px solid #b9d9c2;color:#1d6b3d;border-radius:.75rem;padding:.875rem 1rem;font-size:.875rem;">
+        @if($periodo?->estaAbierto())
+            Puedes actualizar tus datos hasta el {{ $periodo->fecha_cierre->format('d/m/Y H:i') }}.
+        @else
+            Tienes autorización administrativa para actualizar tus datos hasta el {{ $autorizacion->expira_en->format('d/m/Y H:i') }}.
+        @endif
+    </div>
+    @else
+    <div role="status" style="margin-bottom:1rem;background:#fff8e4;border:1px solid #e7d39d;color:#7a5b11;border-radius:.75rem;padding:.875rem 1rem;font-size:.875rem;">
+        @if($periodo)
+            El período «{{ $periodo->nombre }}» está cerrado. Tus datos solo podrán cambiarse cuando se habilite un nuevo período o un administrador autorice la edición.
+        @else
+            No hay un período de actualización abierto. Tus datos están en modo de solo lectura; comunícate con el administrador si necesitas corregirlos.
+        @endif
+    </div>
+    @endif
+
     <form action="{{ route('funcionario.guardar') }}" method="POST">
         @csrf
+        <fieldset @disabled(!$puedeActualizar) style="border:0;padding:0;margin:0;min-width:0;">
 
         {{-- Contacto --}}
         <div class="fn-section" style="animation: fadeUp .3s ease both;">
@@ -221,6 +241,14 @@
                         <input type="text" name="telefono" value="{{ old('telefono', $funcionario->telefono) }}" required class="fn-field" placeholder="300 000 0000">
                     </label>
                     <label class="fn-label">
+                        Correo personal
+                        <input type="email" name="correo_personal" value="{{ old('correo_personal', $funcionario->correo_personal) }}" class="fn-field" placeholder="nombre@correo.com">
+                    </label>
+                    <label class="fn-label">
+                        Correo institucional
+                        <input type="email" name="correo_institucional" value="{{ old('correo_institucional', $funcionario->correo_institucional ?? $funcionario->email) }}" class="fn-field" placeholder="nombre@sena.edu.co">
+                    </label>
+                    <label class="fn-label">
                         Dirección de residencia
                         <input type="text" name="direccion_residencia" value="{{ old('direccion_residencia', $funcionario->direccion_residencia) }}" required class="fn-field" placeholder="Calle 00 # 00-00">
                     </label>
@@ -231,6 +259,35 @@
                     <label class="fn-label">
                         Fondo de pensiones
                         <input type="text" name="fondo_pension" value="{{ old('fondo_pension', $funcionario->fondo_pension) }}" required class="fn-field" placeholder="Nombre del fondo">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        {{-- Datos académicos y operativos --}}
+        <div class="fn-section" style="animation: fadeUp .3s .05s ease both;">
+            <div class="fn-section-header">
+                <div class="fn-section-icon">
+                    <svg width="16" height="16" fill="none" stroke="#a8e063" stroke-width="2" viewBox="0 0 24 24"><path d="m2 10 10-5 10 5-10 5-10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5M22 10v6"/></svg>
+                </div>
+                <div>
+                    <p style="font-size:.8rem;font-weight:700;color:#1a3828;">Información académica y operativa</p>
+                    <p style="font-size:.75rem;color:#5a7a65;margin-top:.1rem;">Formación, área y red de conocimiento</p>
+                </div>
+            </div>
+            <div class="fn-section-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                    <label class="fn-label">Nivel académico
+                        <input name="nivel_academico" value="{{ old('nivel_academico', $funcionario->nivel_academico) }}" class="fn-field" maxlength="100" placeholder="Ej. Profesional">
+                    </label>
+                    <label class="fn-label">Título académico
+                        <input name="titulo_academico" value="{{ old('titulo_academico', $funcionario->titulo_academico) }}" class="fn-field" maxlength="150" placeholder="Ej. Ingeniería Industrial">
+                    </label>
+                    <label class="fn-label">Área
+                        <input name="area" value="{{ old('area', $funcionario->area) }}" class="fn-field" maxlength="150" placeholder="Área de trabajo">
+                    </label>
+                    <label class="fn-label">Red de conocimiento
+                        <input name="red_conocimiento" value="{{ old('red_conocimiento', $funcionario->red_conocimiento) }}" class="fn-field" maxlength="150" placeholder="Red de conocimiento">
                     </label>
                 </div>
             </div>
@@ -319,11 +376,12 @@
         {{-- Actions --}}
         <div style="display:flex;justify-content:flex-end;gap:.75rem;padding-top:.5rem;" class="animate-fade-up-4">
             <a href="{{ route('eventos.index') }}" class="btn-secondary">Cancelar</a>
-            <button type="submit" class="btn-submit">
+            <button type="submit" class="btn-submit" @disabled(!$puedeActualizar)>
                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 Guardar cambios
             </button>
         </div>
+        </fieldset>
     </form>
 </main>
 

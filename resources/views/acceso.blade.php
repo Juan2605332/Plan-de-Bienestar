@@ -2,13 +2,20 @@
 
 @section('title', 'Acceso | Bienestar SENA')
 
-@section('content')
-@endsection
-
 @push('head')
 <style>
     body { background: #071a11 !important; }
-    .public-shell, header.public-header { display: none !important; }
+    .public-shell {
+        min-height: 100vh;
+        background: #071a11;
+    }
+    header.public-header { display: none !important; }
+    .public-shell > main {
+        max-width: none !important;
+        min-height: 100vh;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
     .login-wrap {
         min-height: 100vh;
         display: flex;
@@ -150,7 +157,9 @@
         letter-spacing: .03em;
     }
 </style>
+@endpush
 
+@section('content')
 <div class="login-wrap">
     <div class="login-blob login-blob-1"></div>
     <div class="login-blob login-blob-2"></div>
@@ -227,9 +236,9 @@
                     >
                 </div>
 
-                @if ($errors->any())
-                <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;border-radius:.625rem;padding:.625rem .875rem;font-size:.8rem;">
-                    {{ $errors->first() }}
+                @if (session('mensaje') || $errors->any())
+                <div role="alert" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;border-radius:.625rem;padding:.625rem .875rem;font-size:.8rem;">
+                    {{ session('mensaje') ?? $errors->first() }}
                 </div>
                 @endif
 
@@ -248,4 +257,4 @@
         </div>
     </div>
 </div>
-@endpush
+@endsection

@@ -9,13 +9,18 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use RuntimeException;
+use Throwable;
 
 class EventoInscripcionController extends Controller
 {
     public function index(Request $request): View
     {
-        $funcionario = FuncionarioPerfil::with('familiares', 'inscripciones')->findOrFail(session('funcionario_id'));
+        $funcionario = FuncionarioPerfil::with(['familiares', 'inscripciones.asistencia', 'inscripciones.documentos'])->findOrFail(session('funcionario_id'));
         $esPadreMadre = $funcionario->es_padre_madre
             || $funcionario->familiares->whereIn('parentesco', ['HIJO', 'HIJASTRO'])->isNotEmpty();
         $tieneFamiliarACargo = $funcionario->familiares->contains('es_a_cargo', true);
@@ -58,12 +63,28 @@ class EventoInscripcionController extends Controller
             ->with(['encuestas' => fn ($query) => $query->where('activa', true)])
             ->get();
 
-        $misInscripcionesIds = $funcionario->inscripciones->pluck('evento_id')->toArray();
+        $inscripcionesActivas = $funcionario->inscripciones->where('estado', 'INSCRITO');
+        $misInscripcionesIds = $inscripcionesActivas->pluck('evento_id')->all();
+        $inscripcionesPorEvento = $inscripcionesActivas->keyBy('evento_id');
 
-        return view('eventos.index', compact('funcionario', 'eventos', 'misInscripcionesIds'));
+        return view('eventos.index', compact('funcionario', 'eventos', 'misInscripcionesIds', 'inscripcionesPorEvento'));
     }
 
-    public function inscribir(Evento $evento): RedirectResponse
+    public function calendario(): View
+    {
+        $inicio = CarbonImmutable::create(now('America/Bogota')->year, 1, 1)->startOfDay();
+        $fin = $inicio->endOfYear();
+        $eventos = Evento::query()
+            ->whereBetween('fecha_evento', [$inicio->toDateString(), $fin->toDateString()])
+            ->whereIn('estado', ['PROGRAMADO', 'EN_CURSO', 'FINALIZADO'])
+            ->orderBy('fecha_evento')
+            ->get()
+            ->groupBy(fn (Evento $evento): string => $evento->fecha_evento->locale('es')->translatedFormat('F'));
+
+        return view('eventos.calendario', compact('eventos'));
+    }
+
+    public function inscribir(Request $request, Evento $evento): RedirectResponse
     {
         $funcionarioId = session('funcionario_id');
         $funcionario = FuncionarioPerfil::with('familiares')->findOrFail($funcionarioId);
@@ -87,7 +108,29 @@ class EventoInscripcionController extends Controller
             return back()->with('mensaje', 'No cumples las condiciones para inscribirte en este evento.');
         }
 
-        $resultado = DB::transaction(function () use ($evento, $funcionarioId): string {
+        $yaInscrito = EventoInscripcion::query()
+            ->where('evento_id', $evento->id)
+            ->where('funcionario_id', $funcionarioId)
+            ->where('estado', 'INSCRITO')
+            ->exists();
+
+        if ($yaInscrito) {
+            return back()->with('mensaje', 'Ya estás inscrito en este evento.');
+        }
+
+        $requisitos = $evento->documentos_requeridos ?? [];
+        $uploads = $request->validate([
+            'documentos' => ['nullable', 'array', 'max:'.count($requisitos)],
+            'documentos.*' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+        ])['documentos'] ?? [];
+
+        foreach ($requisitos as $indice => $requisito) {
+            if (! isset($uploads[$indice])) {
+                return back()->withErrors(["documentos.{$indice}" => "Adjunta el documento requerido: {$requisito}."])->withInput();
+            }
+        }
+
+        $resultado = DB::transaction(function () use ($evento, $funcionarioId): EventoInscripcion|string {
             $evento = Evento::query()->lockForUpdate()->findOrFail($evento->id);
             $inscripcion = EventoInscripcion::query()
                 ->where('evento_id', $evento->id)
@@ -104,19 +147,68 @@ class EventoInscripcionController extends Controller
             }
 
             if ($inscripcion === null) {
-                EventoInscripcion::create([
+                return EventoInscripcion::create([
                     'evento_id' => $evento->id,
                     'funcionario_id' => $funcionarioId,
+                    'qr_token' => (string) Str::uuid(),
                 ]);
-            } else {
-                $inscripcion->update(['estado' => 'INSCRITO', 'fecha_inscripcion' => now()]);
             }
 
-            return 'success';
+            $inscripcion->update([
+                'estado' => 'INSCRITO',
+                'fecha_inscripcion' => now(),
+                'qr_token' => $inscripcion->qr_token ?? (string) Str::uuid(),
+            ]);
+
+            return $inscripcion;
         });
 
-        if ($resultado !== 'success') {
+        if (is_string($resultado)) {
             return back()->with('mensaje', $resultado);
+        }
+
+        $rutasGuardadas = [];
+        $rutasAnteriores = [];
+
+        try {
+            DB::transaction(function () use ($resultado, $requisitos, $uploads, $evento, &$rutasGuardadas, &$rutasAnteriores): void {
+                foreach ($requisitos as $indice => $requisito) {
+                    $archivo = $uploads[$indice];
+                    $ruta = $archivo->store("eventos/{$evento->id}/documentos", 'local');
+                    if ($ruta === false) {
+                        throw new RuntimeException('No fue posible guardar el documento de inscripción.');
+                    }
+
+                    $rutasGuardadas[] = $ruta;
+                    $documentoExistente = $resultado->documentos()->where('tipo_documento', $requisito)->first();
+                    if ($documentoExistente !== null) {
+                        $rutasAnteriores[] = $documentoExistente->ruta;
+                    }
+
+                    $resultado->documentos()->updateOrCreate(
+                        ['tipo_documento' => $requisito],
+                        [
+                            'ruta' => $ruta,
+                            'nombre_original' => $archivo->getClientOriginalName(),
+                            'tamano_bytes' => $archivo->getSize(),
+                        ]
+                    );
+                }
+            });
+        } catch (Throwable $exception) {
+            foreach ($rutasGuardadas as $ruta) {
+                if (! Storage::disk('local')->delete($ruta)) {
+                    Log::error('No fue posible limpiar un documento de inscripción tras un error.', ['ruta' => $ruta]);
+                }
+            }
+
+            throw $exception;
+        }
+
+        foreach (array_diff($rutasAnteriores, $rutasGuardadas) as $rutaAnterior) {
+            if (! Storage::disk('local')->delete($rutaAnterior)) {
+                throw new RuntimeException('La inscripción se guardó, pero no fue posible eliminar el archivo sustituido.');
+            }
         }
 
         return back()->with('success', 'Te has inscrito exitosamente en: '.$evento->nombre);

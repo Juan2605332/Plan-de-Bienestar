@@ -19,7 +19,7 @@ class AdminController extends Controller
 {
     public function dashboard(Request $request): View
     {
-        $eventos = Evento::withCount('inscripciones')
+        $eventos = Evento::withCount(['inscripciones' => fn ($query) => $query->where('estado', 'INSCRITO')])
             ->when($request->filled('buscar_evento'), function ($query) use ($request) {
                 $termino = $request->string('buscar_evento')->trim();
                 $query->where(function ($searchQuery) use ($termino) {
@@ -78,10 +78,11 @@ class AdminController extends Controller
 
     public function guardarEvento(Request $request): RedirectResponse
     {
-        Evento::create($request->validate([
+        $data = $request->validate([
             'periodo_id' => ['required', 'exists:periodos_inscripcion,id'],
             'nombre' => ['required', 'string', 'max:150'],
             'descripcion' => ['nullable', 'string'],
+            'documentos_requeridos' => ['nullable', 'string', 'max:750'],
             'fecha_evento' => ['required', 'date'],
             'lugar' => ['nullable', 'string', 'max:255'],
             'cupo_maximo' => ['nullable', 'integer', 'min:1'],
@@ -90,7 +91,23 @@ class AdminController extends Controller
             'edad_minima' => ['nullable', 'integer', 'min:0', 'max:120', 'lte:edad_maxima'],
             'edad_maxima' => ['nullable', 'integer', 'min:0', 'max:120', 'gte:edad_minima'],
             'requiere_familiar_a_cargo' => ['nullable', 'boolean'],
-        ]) + ['requiere_ser_padre_madre' => $request->boolean('requiere_ser_padre_madre'), 'requiere_familiar_a_cargo' => $request->boolean('requiere_familiar_a_cargo'), 'estado' => 'PROGRAMADO']);
+        ]);
+        $documentosRequeridos = array_values(array_filter(
+            array_map('trim', explode("\n", (string) ($data['documentos_requeridos'] ?? ''))),
+            fn (string $documento): bool => $documento !== ''
+        ));
+
+        if (count($documentosRequeridos) > 5 || collect($documentosRequeridos)->contains(fn (string $documento): bool => mb_strlen($documento) > 150)) {
+            return back()->withInput()->withErrors(['documentos_requeridos' => 'Define máximo cinco documentos, con nombres de hasta 150 caracteres.']);
+        }
+
+        unset($data['documentos_requeridos']);
+        Evento::create($data + [
+            'documentos_requeridos' => $documentosRequeridos,
+            'requiere_ser_padre_madre' => $request->boolean('requiere_ser_padre_madre'),
+            'requiere_familiar_a_cargo' => $request->boolean('requiere_familiar_a_cargo'),
+            'estado' => 'PROGRAMADO',
+        ]);
 
         return redirect()->route('admin.dashboard')->with('success', 'Evento creado correctamente.');
     }
@@ -143,7 +160,10 @@ class AdminController extends Controller
 
     public function inscritos(Evento $evento): View
     {
-        $inscripciones = EventoInscripcion::with('funcionario')->where('evento_id', $evento->id)->latest('fecha_inscripcion')->get();
+        $inscripciones = EventoInscripcion::with(['funcionario.centro', 'asistencia', 'documentos'])
+            ->where('evento_id', $evento->id)
+            ->latest('fecha_inscripcion')
+            ->get();
 
         return view('admin.inscritos', compact('evento', 'inscripciones'));
     }

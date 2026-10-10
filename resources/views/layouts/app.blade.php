@@ -294,6 +294,20 @@
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
                 Nuevo período
             </a>
+            <a href="{{ route('admin.datos.configuracion') }}" class="nav-link {{ request()->routeIs('admin.datos.*') ? 'active' : '' }}">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+                Período de datos
+            </a>
+            <a href="{{ route('admin.reportes') }}" class="nav-link {{ request()->routeIs('admin.reportes*') ? 'active' : '' }}">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-5 5"/></svg>
+                Reportes
+            </a>
+            @if(config('services.dotacion.url'))
+            <a href="{{ config('services.dotacion.url') }}" class="nav-link" target="_blank" rel="noopener noreferrer">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+                Módulo de dotación
+            </a>
+            @endif
             <a href="{{ route('eventos.index') }}" class="nav-link">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 Vista funcionarios

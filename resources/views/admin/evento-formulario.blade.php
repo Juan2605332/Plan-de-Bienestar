@@ -102,6 +102,11 @@
                     Descripción
                     <textarea class="field" name="descripcion" rows="3" placeholder="Describe la actividad brevemente...">{{ old('descripcion') }}</textarea>
                 </label>
+                <label class="form-label" style="grid-column:span 2;">
+                    Documentos requeridos para la inscripción <span style="font-weight:400;color:#5a9070;">(uno por línea, máximo cinco)</span>
+                    <textarea class="field" name="documentos_requeridos" rows="3" maxlength="750" placeholder="Copia de cédula&#10;Acta de compromiso">{{ old('documentos_requeridos') }}</textarea>
+                    <span style="font-size:.72rem;font-weight:400;color:#5a9070;">Los funcionarios deberán adjuntar cada archivo en PDF, JPG o PNG (máximo 5 MB por archivo).</span>
+                </label>
                 <label class="form-label">
                     Fecha del evento
                     <input class="field" name="fecha_evento" type="date" value="{{ old('fecha_evento') }}" required>

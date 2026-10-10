@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
 
             $this->seedInscripciones($funcionarios, $eventos);
             $this->seedEncuestas($funcionarios, $eventos);
+            $this->call(AdminUserSeeder::class);
         });
     }
 

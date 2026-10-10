@@ -28,6 +28,8 @@
                         <th style="padding:.75rem 1rem;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a9070;text-align:left;">Cédula</th>
                         <th style="padding:.75rem 1rem;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a9070;text-align:left;">Fecha inscripción</th>
                         <th style="padding:.75rem 1.5rem;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a9070;text-align:left;">Estado</th>
+                        <th style="padding:.75rem 1rem;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a9070;text-align:left;">Documentos</th>
+                        <th style="padding:.75rem 1rem;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a9070;text-align:left;">QR asistencia</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,11 +49,29 @@
                         <td style="padding:.875rem 1rem;color:#7aaa90;">{{ $inscripcion->fecha_inscripcion->format('d/m/Y H:i') }}</td>
                         <td style="padding:.875rem 1.5rem;">
                             <span class="badge-green">{{ $inscripcion->estado }}</span>
+                            @if($inscripcion->asistencia?->asistio)
+                            <span style="display:block;margin-top:.3rem;font-size:.7rem;color:#4ec483;">Asistió {{ $inscripcion->asistencia->hora_registro?->format('H:i') }}</span>
+                            @endif
+                        </td>
+                        <td style="padding:.875rem 1rem;color:#7aaa90;">
+                            @forelse($inscripcion->documentos as $documento)
+                            <a href="{{ route('admin.documentos.descargar', $documento) }}" style="display:block;color:#a8e063;margin:.2rem 0;">{{ $documento->tipo_documento }}</a>
+                            @empty
+                            —
+                            @endforelse
+                        </td>
+                        <td style="padding:.875rem 1rem;">
+                            @if($inscripcion->estado === 'INSCRITO')
+                            <button type="button" class="btn-ghost" data-qr-toggle data-qr-url="{{ route('admin.asistencia.confirmar', $inscripcion->qr_token) }}" style="font-size:.75rem;padding:.4rem .65rem;">Mostrar QR</button>
+                            <canvas data-qr-canvas hidden aria-label="Código QR de asistencia para {{ $inscripcion->funcionario->nombres }}"></canvas>
+                            @else
+                            —
+                            @endif
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="4" style="text-align:center;color:#3d7055;padding:3rem;font-size:.875rem;">No hay inscritos para este evento.</td>
+                        <td colspan="6" style="text-align:center;color:#3d7055;padding:3rem;font-size:.875rem;">No hay inscritos para este evento.</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -59,4 +79,7 @@
         </div>
     </div>
 </div>
+@push('scripts')
+@vite('resources/js/app.js')
+@endpush
 @endsection

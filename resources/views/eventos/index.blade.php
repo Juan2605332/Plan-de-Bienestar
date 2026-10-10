@@ -141,6 +141,14 @@
             </div>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+            <a href="{{ route('eventos.calendario') }}" class="nav-item">
+                Calendario anual
+            </a>
+            @if(config('services.dotacion.url'))
+            <a href="{{ config('services.dotacion.url') }}" class="nav-item" target="_blank" rel="noopener noreferrer">
+                Dotación
+            </a>
+            @endif
             <a href="{{ route('funcionario.formulario') }}" class="nav-item">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 Mis datos
@@ -238,6 +246,11 @@
                         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
                         Ya inscrito
                     </span>
+                    @php($inscripcion = $inscripcionesPorEvento->get($evento->id))
+                    <span style="display:inline-flex;align-items:center;gap:.375rem;flex-wrap:wrap;">
+                        <button type="button" data-qr-toggle data-qr-url="{{ route('admin.asistencia.confirmar', $inscripcion->qr_token) }}" class="btn-encuesta" style="border:0;cursor:pointer;">Mi QR de asistencia</button>
+                        <canvas data-qr-canvas hidden aria-label="Código QR de asistencia para {{ $funcionario->nombres }}"></canvas>
+                    </span>
                     @foreach($evento->encuestas as $encuesta)
                     <a href="{{ route('encuestas.mostrar', $encuesta) }}" class="btn-encuesta">
                         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -246,8 +259,14 @@
                     @endforeach
                 </div>
                 @else
-                <form action="{{ route('eventos.inscribir', $evento) }}" method="POST">
+                <form action="{{ route('eventos.inscribir', $evento) }}" method="POST" enctype="multipart/form-data" style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap;">
                     @csrf
+                    @foreach($evento->documentos_requeridos ?? [] as $indice => $documento)
+                    <label style="display:flex;flex-direction:column;gap:.25rem;font-size:.7rem;font-weight:600;color:#5a7a65;">
+                        {{ $documento }}
+                        <input type="file" name="documentos[{{ $indice }}]" accept=".pdf,.jpg,.jpeg,.png" required style="max-width:190px;font-size:.7rem;" aria-label="{{ $documento }}">
+                    </label>
+                    @endforeach
                     <button type="submit" class="btn-inscribir">
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                         Inscribirme
@@ -281,5 +300,6 @@ buscadorEvento?.addEventListener('input', () => {
     }, 350);
 });
 </script>
+@vite('resources/js/app.js')
 </body>
 </html>

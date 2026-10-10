@@ -7,6 +7,37 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Plan de Bienestar Institucional
+
+La aplicación centraliza perfiles de funcionarios, actividades, inscripciones, documentos de soporte, asistencia y encuestas de satisfacción.
+
+### Puesta en marcha
+
+1. Copia `.env.example` como `.env` y configura la conexión de base de datos, `APP_URL` y `APP_KEY` (`php artisan key:generate`).
+2. Define `ADMIN_EMAIL` y `ADMIN_PASSWORD` antes de ejecutar `php artisan db:seed`; el sembrador crea la cuenta administradora inicial solo cuando ambas variables están configuradas.
+3. Instala dependencias y prepara la base de datos y los recursos frontend:
+
+   ```sh
+   composer install
+   npm install
+   php artisan migrate --seed
+   npm run build
+   php artisan serve
+   ```
+
+Los funcionarios ingresan con su número de cédula. El administrador ingresa con el correo y la contraseña configurados. La base de datos debe contener los catálogos de cargos, vinculaciones y centros; el sembrador incluye datos de demostración.
+
+### Flujos operativos
+
+- **Perfiles:** en **Período de datos**, el administrador define las fechas de apertura y cierre. Fuera de la ventana los perfiles son de solo lectura. Una excepción administrativa autoriza una única actualización, registra el motivo y tiene vencimiento.
+- **Calendario e inscripciones:** el administrador publica períodos y actividades. El calendario anual de funcionarios muestra las actividades programadas; cada inscripción respeta las condiciones, los cupos y los documentos configurados para el evento.
+- **Documentos:** los archivos de inscripción aceptan PDF, JPG o PNG de hasta 5 MB por documento y se almacenan en el disco privado. Solo el panel administrativo permite descargarlos.
+- **Asistencia:** cada funcionario inscrito muestra su QR desde la actividad; el administrador lo escanea con un dispositivo que tenga sesión administrativa y confirma el registro. La asistencia solo se registra el día del evento y no se duplica. También se puede abrir el QR desde la lista administrativa de inscritos.
+- **Encuestas y reportes:** las encuestas se asocian a actividades y los reportes presentan inscritos, asistentes, tasas por centro y promedio de respuestas de escala 1–5. El reporte anual se descarga en CSV.
+- **Dotación:** si el sistema externo está disponible, define `DOTACION_URL` para mostrar su acceso en los portales. Los datos de cargo, centro, área, red de conocimiento y tallas permanecen centralizados en el perfil.
+
+Los períodos de actualización y de inscripción son independientes: el primero controla la edición del perfil; el segundo determina cuándo una persona puede inscribirse a los eventos.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

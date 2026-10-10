@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'admin_email' => env('ADMIN_EMAIL'),
+    'admin_password' => env('ADMIN_PASSWORD'),
     'admin_cedulas' => array_filter(array_map('trim', explode(',', (string) env('ADMIN_CEDULAS', '')))),
     'calendar_notification_email' => env('CALENDAR_NOTIFICATION_EMAIL', 'admin@sena.edu.co'),
 
@@ -68,7 +70,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => 'America/Bogota',
 
     /*
     |--------------------------------------------------------------------------

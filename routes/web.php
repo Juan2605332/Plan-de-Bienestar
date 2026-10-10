@@ -2,7 +2,11 @@
 
 use App\Http\Controllers\AccesoController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminDatosController;
+use App\Http\Controllers\AdminDocumentoController;
+use App\Http\Controllers\AdminReporteController;
 use App\Http\Controllers\EncuestaController;
+use App\Http\Controllers\EventoAsistenciaController;
 use App\Http\Controllers\EventoInscripcionController;
 use App\Http\Controllers\FuncionarioController;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +23,7 @@ Route::middleware(['auth.funcionario'])->group(function () {
 
     Route::get('/eventos', [EventoInscripcionController::class, 'index'])->name('eventos.index');
     Route::post('/eventos/inscribir/{evento}', [EventoInscripcionController::class, 'inscribir'])->name('eventos.inscribir');
+    Route::get('/calendario', [EventoInscripcionController::class, 'calendario'])->name('eventos.calendario');
 
     Route::get('/encuestas/{encuesta}', [EncuestaController::class, 'mostrar'])->name('encuestas.mostrar');
     Route::post('/encuestas/{encuesta}', [EncuestaController::class, 'responder'])->name('encuestas.responder');
@@ -34,6 +39,14 @@ Route::middleware('auth.admin')->prefix('admin')->name('admin.')->group(function
     Route::post('/eventos', [AdminController::class, 'guardarEvento'])->name('eventos.guardar');
     Route::get('/eventos/{evento}/inscritos', [AdminController::class, 'inscritos'])->name('inscritos');
     Route::get('/eventos/{evento}/inscritos/exportar', [AdminController::class, 'exportarInscritos'])->name('inscritos.exportar');
+    Route::get('/asistencia/{token}', [EventoAsistenciaController::class, 'confirmar'])->name('asistencia.confirmar');
+    Route::post('/asistencia/{token}', [EventoAsistenciaController::class, 'registrar'])->name('asistencia.registrar');
+    Route::get('/documentos/{documento}/descargar', [AdminDocumentoController::class, 'descargar'])->name('documentos.descargar');
+    Route::get('/reportes', [AdminReporteController::class, 'index'])->name('reportes');
+    Route::get('/reportes/exportar', [AdminReporteController::class, 'exportar'])->name('reportes.exportar');
+    Route::get('/datos/configuracion', [AdminDatosController::class, 'index'])->name('datos.configuracion');
+    Route::post('/datos/periodo', [AdminDatosController::class, 'guardarPeriodo'])->name('datos.periodo.guardar');
+    Route::post('/datos/autorizar', [AdminDatosController::class, 'autorizarEdicion'])->name('datos.autorizar');
     Route::get('/eventos/{evento}/encuestas/crear', [AdminController::class, 'crearEncuesta'])->name('encuestas.crear');
     Route::post('/eventos/{evento}/encuestas', [AdminController::class, 'guardarEncuesta'])->name('encuestas.guardar');
     Route::get('/funcionarios/importar', [AdminController::class, 'formularioImportar'])->name('funcionarios.importar');
