@@ -206,6 +206,11 @@
         <h1 style="margin-top:.375rem;font-size:1.6rem;font-weight:800;color:#1a3828;letter-spacing:-.02em;">Actualizar mis datos</h1>
         <p style="margin-top:.25rem;font-size:.875rem;color:#5a7a65;">{{ $funcionario->nombres }} {{ $funcionario->apellidos }}</p>
     </div>
+    @unless ($puedeActualizar)
+        <div role="status" style="background:#fff8e8;border:1px solid #ead8a8;color:#765a12;border-radius:.75rem;padding:.75rem 1rem;margin-bottom:1rem;">
+            modo de solo lectura para los datos institucionales: el período de actualización está cerrado. Puedes actualizar tu perfil personal y contraseña.
+        </div>
+    @endunless
 
     <form action="{{ route('funcionario.guardar') }}" method="POST" enctype="multipart/form-data">
         @csrf
@@ -401,12 +406,11 @@
         {{-- Actions --}}
         <div style="display:flex;justify-content:flex-end;gap:.75rem;padding-top:.5rem;" class="animate-fade-up-4">
             <a href="{{ route('eventos.index') }}" class="btn-secondary">Cancelar</a>
-            <button type="submit" class="btn-submit" @disabled(!$puedeActualizar)>
+            <button type="submit" class="btn-submit">
                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 Guardar cambios
             </button>
         </div>
-        </fieldset>
     </form>
 
     <section class="fn-section" style="margin-top:1.5rem;">

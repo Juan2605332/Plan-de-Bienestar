@@ -3,6 +3,7 @@
 use App\Exports\InscritosEventoExport;
 use App\Models\Evento;
 use App\Models\FuncionarioPerfil;
+use App\Models\PeriodoActualizacionDatos;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -116,6 +117,12 @@ test('una cuenta desactivada no puede iniciar sesión', function () {
 test('el funcionario puede actualizar sus datos de acceso y personalizar su perfil', function () {
     Storage::fake('public');
     $this->seed();
+    PeriodoActualizacionDatos::create([
+        'nombre' => 'Actualización anual',
+        'fecha_inicio' => now()->subHour(),
+        'fecha_cierre' => now()->addHour(),
+        'activo' => true,
+    ]);
     $funcionario = FuncionarioPerfil::findOrFail(1);
     $usuario = User::factory()->create(['email' => $funcionario->email, 'is_admin' => false]);
 
@@ -148,6 +155,43 @@ test('el funcionario puede actualizar sus datos de acceso y personalizar su perf
         'id' => $funcionario->id,
         'email' => 'actualizado@sena.edu.co',
     ]);
+});
+
+test('el funcionario puede personalizar su perfil cuando el período institucional está cerrado', function () {
+    Storage::fake('public');
+    $this->seed();
+    $funcionario = FuncionarioPerfil::findOrFail(1);
+    $usuario = User::factory()->create(['email' => $funcionario->email, 'is_admin' => false]);
+
+    $this->actingAs($usuario)
+        ->withSession(['funcionario_id' => $funcionario->id])
+        ->post(route('funcionario.guardar'), [
+            'nombres' => 'Nombre Personalizado',
+            'apellidos' => 'Apellido Personalizado',
+            'email' => 'personalizado@sena.edu.co',
+            'telefono' => $funcionario->telefono,
+            'direccion_residencia' => $funcionario->direccion_residencia,
+            'eps' => $funcionario->eps,
+            'fondo_pension' => $funcionario->fondo_pension,
+            'talla_camisa' => $funcionario->talla_camisa,
+            'talla_pantalon' => $funcionario->talla_pantalon,
+            'talla_calzado' => $funcionario->talla_calzado,
+            'profile_color' => '#2563eb',
+            'profile_photo' => UploadedFile::fake()->image('perfil.png'),
+        ])
+        ->assertSessionHas('success');
+
+    $this->assertDatabaseHas('users', [
+        'id' => $usuario->id,
+        'email' => 'personalizado@sena.edu.co',
+        'name' => 'Nombre Personalizado Apellido Personalizado',
+        'profile_color' => '#2563eb',
+    ]);
+    $this->assertDatabaseHas('funcionarios_perfil', [
+        'id' => $funcionario->id,
+        'email' => 'personalizado@sena.edu.co',
+    ]);
+    Storage::disk('public')->assertExists($usuario->fresh()->profile_photo_path);
 });
 
 test('el funcionario puede cambiar su contraseña con la contraseña actual', function () {

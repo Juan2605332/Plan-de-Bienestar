@@ -16,19 +16,21 @@ use Illuminate\Support\Str;
 
 test('el perfil queda bloqueado si el período anual está cerrado', function () {
     $this->seed();
+    $usuario = funcionarioAutenticado();
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('funcionario.formulario'))
         ->assertOk()
         ->assertSee('modo de solo lectura');
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('funcionario.guardar'))
         ->assertForbidden();
 });
 
 test('el funcionario puede actualizar su información durante el período habilitado', function () {
     $this->seed();
+    $usuario = funcionarioAutenticado();
     PeriodoActualizacionDatos::create([
         'nombre' => 'Actualización anual',
         'fecha_inicio' => now()->subHour(),
@@ -36,18 +38,22 @@ test('el funcionario puede actualizar su información durante el período habili
         'activo' => true,
     ]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('funcionario.guardar'), [
+            'nombres' => 'Funcionario',
+            'apellidos' => 'De Prueba',
+            'email' => 'persona@sena.edu.co',
             'correo_personal' => 'persona@example.com',
             'correo_institucional' => 'persona@sena.edu.co',
-            'nivel_academico' => 'Profesional',
-            'titulo_academico' => 'Ingeniería',
-            'area' => 'Tecnología',
-            'red_conocimiento' => 'Informática',
+            'profile_color' => '#1d6b3d',
             'telefono' => '3001234567',
             'direccion_residencia' => 'Calle 1',
             'eps' => 'SENA EPS',
             'fondo_pension' => 'Colpensiones',
+            'nivel_academico' => 'Profesional',
+            'titulo_academico' => 'Ingeniería',
+            'area' => 'Tecnología',
+            'red_conocimiento' => 'Informática',
             'talla_camisa' => 'M',
             'talla_pantalon' => '32',
             'talla_calzado' => '39',
@@ -69,6 +75,7 @@ test('el funcionario puede actualizar su información durante el período habili
 test('una autorización administrativa habilita una sola actualización fuera del período', function () {
     $this->seed();
     $administrador = User::factory()->create(['is_admin' => true]);
+    $usuario = funcionarioAutenticado();
     $autorizacion = FuncionarioEdicionAutorizada::create([
         'funcionario_id' => 1,
         'administrador_id' => $administrador->id,
@@ -86,14 +93,21 @@ test('una autorización administrativa habilita una sola actualización fuera de
         'familiares' => [],
     ];
 
-    $this->withSession(['funcionario_id' => 1])
+    $datos += [
+        'nombres' => 'Funcionario',
+        'apellidos' => 'De Prueba',
+        'email' => $usuario->email,
+        'profile_color' => '#1d6b3d',
+    ];
+
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('funcionario.guardar'), $datos)
         ->assertRedirectToRoute('funcionario.formulario');
 
     expect($autorizacion->fresh()->usado_en)->not->toBeNull();
 
-    $this->withSession(['funcionario_id' => 1])
-        ->post(route('funcionario.guardar'), $datos)
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
+        ->post(route('funcionario.guardar'), array_merge($datos, ['telefono' => '3007654321']))
         ->assertForbidden();
 });
 
@@ -136,14 +150,15 @@ test('el administrador configura el período y autoriza una excepción con traza
 
 test('la inscripción exige y almacena documentos de forma privada', function () {
     $this->seed();
+    $usuario = funcionarioAutenticado();
     Storage::fake('local');
     $evento = crearEventoPlataforma(['documentos_requeridos' => ['Copia de cédula']]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('eventos.inscribir', $evento))
         ->assertSessionHasErrors('documentos.0');
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('eventos.inscribir', $evento), [
             'documentos' => [UploadedFile::fake()->create('cedula.pdf', 10, 'application/pdf')],
         ])
@@ -164,10 +179,11 @@ test('la inscripción exige y almacena documentos de forma privada', function ()
 
 test('el QR registra asistencia solo el día del evento y no duplica el registro', function () {
     $this->seed();
+    $usuario = funcionarioAutenticado();
     $evento = crearEventoPlataforma(['fecha_evento' => now('America/Bogota')->toDateString()]);
-    $this->withSession(['funcionario_id' => 1])->post(route('eventos.inscribir', $evento));
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])->post(route('eventos.inscribir', $evento));
     $inscripcion = $evento->inscripciones()->firstOrFail();
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('eventos.index'))
         ->assertOk()
         ->assertSee('Mi QR de asistencia');
@@ -238,9 +254,10 @@ test('los reportes presentan participación por centro y exportan un CSV', funct
 
 test('el calendario anual es visible para funcionarios autenticados', function () {
     $this->seed();
+    $usuario = funcionarioAutenticado();
     $evento = crearEventoPlataforma(['nombre' => 'Día de la Familia']);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('eventos.calendario'))
         ->assertOk()
         ->assertSee('Calendario de actividades')
@@ -268,4 +285,14 @@ function crearEventoPlataforma(array $atributos = []): Evento
         'requiere_familiar_a_cargo' => false,
         'estado' => 'PROGRAMADO',
     ], $atributos));
+}
+
+function funcionarioAutenticado(int $id = 1): User
+{
+    $funcionario = FuncionarioPerfil::findOrFail($id);
+
+    return User::factory()->create([
+        'email' => $funcionario->email,
+        'is_admin' => false,
+    ]);
 }
