@@ -12,6 +12,7 @@ use App\Models\PeriodoInscripcion;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -112,6 +113,19 @@ class AdminController extends Controller
         return redirect()->route('admin.dashboard')->with('success', 'Evento creado correctamente.');
     }
 
+    public function eliminarEvento(Request $request, Evento $evento): RedirectResponse
+    {
+        $periodoCalendario = $request->validate([
+            'mes' => ['sometimes', 'integer', 'between:1,12'],
+            'anio' => ['sometimes', 'integer', 'between:2020,2100'],
+        ]);
+
+        DB::transaction(fn () => $evento->delete());
+
+        return redirect()->route('admin.calendario', $periodoCalendario)
+            ->with('success', 'Evento eliminado correctamente.');
+    }
+
     public function crearEncuesta(Evento $evento): View
     {
         return view('admin.encuesta-formulario', compact('evento'));
@@ -181,7 +195,7 @@ class AdminController extends Controller
     public function importarFuncionarios(Request $request): RedirectResponse
     {
         $data = $request->validate(['archivo' => ['required', 'file', 'mimes:xlsx,csv', 'max:5120']]);
-        Excel::import(new FuncionariosImport, $data['archivo']);
+        DB::transaction(fn () => Excel::import(new FuncionariosImport, $data['archivo']));
 
         return redirect()->route('admin.dashboard')->with('success', 'Funcionarios importados correctamente.');
     }

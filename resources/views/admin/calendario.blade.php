@@ -536,6 +536,13 @@ $todosEventos = \App\Models\Evento::query()
             <div id="modal-details" style="display:flex;flex-direction:column;gap:.125rem;"></div>
         </div>
         <div class="modal-footer">
+            <form id="modal-form-eliminar" method="POST" action="#" style="margin-right:auto;" onsubmit="return confirm('¿Eliminar este evento y sus inscripciones y encuestas? Esta acción no se puede deshacer.');">
+                @csrf
+                @method('DELETE')
+                <input type="hidden" name="mes" value="{{ $mes }}">
+                <input type="hidden" name="anio" value="{{ $anio }}">
+                <button type="submit" class="btn-ghost" style="font-size:.8rem;padding:.5rem .875rem;color:#f87171;border-color:rgba(248,113,113,.35);">Eliminar evento</button>
+            </form>
             <a id="modal-link-inscritos" href="#" class="btn-ghost" style="font-size:.8rem;padding:.5rem .875rem;">Ver inscritos</a>
             <a id="modal-link-encuesta" href="#" class="btn-primary" style="font-size:.8rem;padding:.5rem .875rem;">Crear encuesta</a>
         </div>
@@ -547,7 +554,8 @@ $todosEventos = \App\Models\Evento::query()
 const EVENTOS_DATA = @json($todosEventos->keyBy('id'));
 const ROUTES = {
     inscritos: "{{ rtrim(route('admin.inscritos', ['evento' => '__ID__']), '/') }}",
-    encuesta:  "{{ rtrim(route('admin.encuestas.crear', ['evento' => '__ID__']), '/') }}"
+    encuesta:  "{{ rtrim(route('admin.encuestas.crear', ['evento' => '__ID__']), '/') }}",
+    eliminar:  "{{ rtrim(route('admin.eventos.eliminar', ['evento' => '__ID__']), '/') }}"
 };
 
 // ====== MODAL ======
@@ -589,6 +597,7 @@ function abrirModal(id) {
 
     document.getElementById('modal-link-inscritos').href = ROUTES.inscritos.replace('__ID__', id);
     document.getElementById('modal-link-encuesta').href  = ROUTES.encuesta.replace('__ID__', id);
+    document.getElementById('modal-form-eliminar').action = ROUTES.eliminar.replace('__ID__', id);
 
     const overlay = document.getElementById('modal-overlay');
     overlay.classList.add('open');

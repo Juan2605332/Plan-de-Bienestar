@@ -15,6 +15,7 @@ use Illuminate\View\View;
 class FuncionarioController extends Controller
 {
     public function formulario(): View
+    public function formulario(): View
     {
         $funcionario = FuncionarioPerfil::with('familiares')->findOrFail(session('funcionario_id'));
         $centros = CentroFormacion::all();

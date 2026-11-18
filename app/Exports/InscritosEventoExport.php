@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Evento;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -10,7 +11,7 @@ class InscritosEventoExport implements FromCollection, WithHeadings
 {
     public function __construct(public Evento $evento) {}
 
-    public function collection()
+    public function collection(): Collection
     {
         return $this->evento->inscripciones()
             ->with(['funcionario.centro', 'funcionario.cargo', 'funcionario.vinculacion', 'asistencia'])

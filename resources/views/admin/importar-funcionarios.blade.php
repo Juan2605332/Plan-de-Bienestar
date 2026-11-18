@@ -35,10 +35,13 @@
         <div style="background:rgba(0,0,0,.2);border:1px solid var(--border-dark);border-radius:.875rem;padding:1.125rem 1.25rem;">
             <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5a9070;margin-bottom:.75rem;">Encabezados esperados</p>
             <div style="display:flex;flex-wrap:wrap;gap:.375rem;">
-                @foreach(['cedula','nombres','apellidos','genero','fecha_nacimiento','email','telefono','direccion_residencia','eps','fondo_pension','tallas','tipo_cargo','tipo_vinculacion','centro_formacion','municipio'] as $col)
+                @foreach(['cedula','nombres','apellidos','genero','fecha_nacimiento','email','telefono','direccion_residencia','eps','fondo_pension','talla_camisa','talla_pantalon','talla_calzado','tipo_cargo','tipo_vinculacion','centro_formacion','municipio'] as $col)
                 <span style="background:rgba(168,224,99,.08);border:1px solid rgba(168,224,99,.14);color:#a8e063;font-size:.7rem;font-weight:600;font-family:monospace;padding:.2rem .55rem;border-radius:.375rem;">{{ $col }}</span>
                 @endforeach
             </div>
+            <p style="font-size:.75rem;color:#7aaa90;margin-top:.75rem;line-height:1.6;">
+                Obligatorios: cedula, nombres, apellidos, genero y fecha_nacimiento. Género admite MASCULINO, FEMENINO, OTRO, M o F. Las fechas pueden ser fechas de Excel o texto válido.
+            </p>
         </div>
 
         <div style="display:flex;justify-content:flex-end;gap:.75rem;" class="animate-fade-up-3">

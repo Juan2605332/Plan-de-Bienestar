@@ -7,11 +7,16 @@ use App\Models\Evento;
 use App\Models\FuncionarioPerfil;
 use App\Models\PeriodoInscripcion;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 test('un funcionario inscrito puede responder una encuesta y actualizar su respuesta', function () {
     $this->seed();
+    $usuario = User::factory()->create(['email' => FuncionarioPerfil::findOrFail(1)->email]);
     $evento = crearEventoParaEncuesta();
     $encuesta = Encuesta::create([
         'evento_id' => $evento->id,
@@ -30,14 +35,14 @@ test('un funcionario inscrito puede responder una encuesta y actualizar su respu
         ['texto_opcion' => 'Buena', 'valor_numerico' => 4],
     ]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('eventos.inscribir', $evento));
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('encuestas.mostrar', $encuesta))
         ->assertSee($pregunta->enunciado);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('encuestas.responder', $encuesta), [
             'respuestas' => [$pregunta->id => $opciones[0]->id],
         ])
@@ -50,7 +55,7 @@ test('un funcionario inscrito puede responder una encuesta y actualizar su respu
         'respuesta_numero' => 5,
     ]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('encuestas.responder', $encuesta), [
             'respuestas' => [$pregunta->id => $opciones[1]->id],
         ]);
@@ -65,6 +70,7 @@ test('un funcionario inscrito puede responder una encuesta y actualizar su respu
 
 test('un funcionario no inscrito no puede consultar ni responder una encuesta', function () {
     $this->seed();
+    $usuario = User::factory()->create(['email' => FuncionarioPerfil::findOrFail(1)->email]);
     $evento = crearEventoParaEncuesta();
     $encuesta = Encuesta::create([
         'evento_id' => $evento->id,
@@ -72,13 +78,14 @@ test('un funcionario no inscrito no puede consultar ni responder una encuesta', 
         'activa' => true,
     ]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('encuestas.mostrar', $encuesta))
         ->assertForbidden();
 });
 
 test('una encuesta exige sus preguntas obligatorias', function () {
     $this->seed();
+    $usuario = User::factory()->create(['email' => FuncionarioPerfil::findOrFail(1)->email]);
     $evento = crearEventoParaEncuesta();
     $encuesta = Encuesta::create([
         'evento_id' => $evento->id,
@@ -93,7 +100,7 @@ test('una encuesta exige sus preguntas obligatorias', function () {
     ]);
     $evento->inscripciones()->create(['funcionario_id' => 1]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('encuestas.responder', $encuesta), ['respuestas' => []])
         ->assertUnprocessable()
         ->assertSee('Responde todas las preguntas obligatorias.');
@@ -158,6 +165,32 @@ test('un administrador puede buscar eventos por nombre, descripción o lugar', f
         ->assertDontSee('Espacio de bienestar para mujeres');
 });
 
+test('el administrador puede eliminar un evento del calendario y sus datos relacionados', function () {
+    $this->seed();
+    $evento = crearEventoParaEncuesta();
+    $evento->inscripciones()->create(['funcionario_id' => 1]);
+    $encuesta = Encuesta::create([
+        'evento_id' => $evento->id,
+        'titulo' => 'Encuesta que se elimina junto con el evento',
+        'activa' => true,
+    ]);
+    $administrador = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($administrador)
+        ->get(route('admin.calendario'))
+        ->assertOk()
+        ->assertSee('modal-form-eliminar');
+
+    $this->actingAs($administrador)
+        ->delete(route('admin.eventos.eliminar', $evento), ['mes' => 3, 'anio' => 2026])
+        ->assertRedirect(route('admin.calendario', ['mes' => 3, 'anio' => 2026]))
+        ->assertSessionHas('success', 'Evento eliminado correctamente.');
+
+    $this->assertDatabaseMissing('eventos', ['id' => $evento->id]);
+    $this->assertDatabaseMissing('evento_inscripciones', ['evento_id' => $evento->id]);
+    $this->assertDatabaseMissing('encuestas', ['id' => $encuesta->id]);
+});
+
 test('la importación crea funcionarios y exige un archivo en el panel', function () {
     $this->seed();
 
@@ -184,9 +217,78 @@ test('la importación crea funcionarios y exige un archivo en el panel', functio
 
     $administrador = User::factory()->create(['is_admin' => true]);
 
+    $archivo = UploadedFile::fake()->createWithContent(
+        'funcionarios.csv',
+        implode("\n", [
+            'cedula,nombres,apellidos,genero,fecha_nacimiento,email,tipo_cargo,tipo_vinculacion,centro_formacion,municipio',
+            '1234567891,Carlos,Ruiz,M,1991-04-15,carlos@sena.edu.co,INSTRUCTOR,CARRERA,CENTRO DE PRUEBA,Giron',
+        ]),
+    );
+
+    $this->actingAs($administrador)
+        ->post(route('admin.funcionarios.importar.guardar'), ['archivo' => $archivo])
+        ->assertRedirectToRoute('admin.dashboard')
+        ->assertSessionHas('success', 'Funcionarios importados correctamente.');
+
+    $this->assertDatabaseHas('funcionarios_perfil', [
+        'cedula' => '1234567891',
+        'nombres' => 'Carlos',
+        'genero' => 'MASCULINO',
+        'email' => 'carlos@sena.edu.co',
+    ]);
+
     $this->actingAs($administrador)
         ->post(route('admin.funcionarios.importar.guardar'))
         ->assertSessionHasErrors('archivo');
+});
+
+test('la importación acepta XLSX con fechas seriales de Excel y rechaza filas inválidas sin guardar parcialmente', function () {
+    $this->seed();
+    $administrador = User::factory()->create(['is_admin' => true]);
+    $spreadsheet = new Spreadsheet;
+    $spreadsheet->getActiveSheet()->fromArray([
+        ['cedula', 'nombres', 'apellidos', 'genero', 'fecha_nacimiento', 'email'],
+        ['1234567892', 'Lucía', 'Gómez', 'F', 35000, 'lucia@sena.edu.co'],
+    ]);
+
+    $rutaTemporal = tempnam(sys_get_temp_dir(), 'funcionarios-');
+    (new Xlsx($spreadsheet))->save($rutaTemporal);
+    $contenido = file_get_contents($rutaTemporal);
+    unlink($rutaTemporal);
+    $spreadsheet->disconnectWorksheets();
+    $archivo = UploadedFile::fake()->createWithContent('funcionarios.xlsx', $contenido);
+
+    $this->actingAs($administrador)
+        ->post(route('admin.funcionarios.importar.guardar'), ['archivo' => $archivo])
+        ->assertRedirectToRoute('admin.dashboard')
+        ->assertSessionHas('success', 'Funcionarios importados correctamente.');
+
+    $this->assertDatabaseHas('funcionarios_perfil', [
+        'cedula' => '1234567892',
+        'nombres' => 'Lucía',
+        'genero' => 'FEMENINO',
+    ]);
+    expect(FuncionarioPerfil::where('cedula', '1234567892')->firstOrFail()->fecha_nacimiento->format('Y-m-d'))
+        ->toBe(Date::excelToDateTimeObject(35000)->format('Y-m-d'));
+
+    $archivoInvalido = UploadedFile::fake()->createWithContent(
+        'funcionarios.csv',
+        implode("\n", [
+            'cedula,nombres,apellidos,genero,fecha_nacimiento',
+            '1234567893,Pedro,Suárez,MASCULINO,1990-01-01',
+            '1234567894,Laura,Marín,INVALIDO,1990-01-01',
+        ]),
+    );
+
+    $this->actingAs($administrador)
+        ->from(route('admin.funcionarios.importar'))
+        ->post(route('admin.funcionarios.importar.guardar'), ['archivo' => $archivoInvalido])
+        ->assertRedirect(route('admin.funcionarios.importar'))
+        ->assertSessionHasErrors()
+        ->assertSessionHas('errors', fn ($errores) => str_contains($errores->first(), 'Fila 3'));
+
+    $this->assertDatabaseMissing('funcionarios_perfil', ['cedula' => '1234567893']);
+    $this->assertDatabaseMissing('funcionarios_perfil', ['cedula' => '1234567894']);
 });
 
 function crearEventoParaEncuesta(): Evento

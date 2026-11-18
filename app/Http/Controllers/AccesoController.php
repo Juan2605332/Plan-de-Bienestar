@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FuncionarioPerfil;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,17 +22,39 @@ class AccesoController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        $request->session()->forget('funcionario_id');
+
         if (! Auth::attempt([
             'email' => $data['usuario'],
             'password' => $data['password'],
-            'is_admin' => true,
+            'activo' => true,
         ])) {
             return back()->withInput($request->only('usuario'))->with('mensaje', 'El usuario o la contraseña no son correctos.');
         }
 
+        $usuario = Auth::user();
+
+        if ($usuario->is_admin) {
+            $destino = 'admin.dashboard';
+        } else {
+            $funcionario = FuncionarioPerfil::query()
+                ->whereRaw('LOWER(email) = ?', [strtolower($usuario->email)])
+                ->where('activo', true)
+                ->first();
+
+            if ($funcionario === null) {
+                Auth::logout();
+
+                return back()->withInput($request->only('usuario'))->with('mensaje', 'No hay un perfil de funcionario activo asociado a este usuario.');
+            }
+
+            $request->session()->put('funcionario_id', $funcionario->id);
+            $destino = 'funcionario.formulario';
+        }
+
         $request->session()->regenerate();
 
-        return redirect()->route('admin.dashboard');
+        return redirect()->route($destino);
     }
 
     public function salir(Request $request): RedirectResponse

@@ -9,6 +9,7 @@ use App\Http\Controllers\EncuestaController;
 use App\Http\Controllers\EventoAsistenciaController;
 use App\Http\Controllers\EventoInscripcionController;
 use App\Http\Controllers\FuncionarioController;
+use App\Http\Controllers\PerfilController;
 use Illuminate\Support\Facades\Route;
 
 // Pantalla principal de acceso por cédula
@@ -19,7 +20,9 @@ Route::post('/salir', [AccesoController::class, 'salir'])->name('salir');
 // Rutas protegidas para el funcionario
 Route::middleware(['auth.funcionario'])->group(function () {
     Route::get('/mis-datos', [FuncionarioController::class, 'formulario'])->name('funcionario.formulario');
-    Route::post('/mis-datos', [FuncionarioController::class, 'guardar'])->name('funcionario.guardar');
+    Route::post('/mis-datos', [PerfilController::class, 'actualizar'])->name('funcionario.guardar');
+    Route::get('/mi-foto', [PerfilController::class, 'foto'])->name('funcionario.foto');
+    Route::put('/mi-contrasena', [PerfilController::class, 'actualizarContrasena'])->name('funcionario.contrasena.actualizar');
 
     Route::get('/eventos', [EventoInscripcionController::class, 'index'])->name('eventos.index');
     Route::post('/eventos/inscribir/{evento}', [EventoInscripcionController::class, 'inscribir'])->name('eventos.inscribir');
@@ -32,11 +35,16 @@ Route::middleware(['auth.funcionario'])->group(function () {
 
 Route::middleware('auth.admin')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/perfil', [AdminPerfilController::class, 'index'])->name('perfil');
+    Route::put('/perfil', [AdminPerfilController::class, 'actualizar'])->name('perfil.actualizar');
+    Route::get('/perfil/foto', [AdminPerfilController::class, 'foto'])->name('perfil.foto');
+    Route::put('/mi-contrasena', [AdminPerfilController::class, 'actualizarContrasena'])->name('perfil.contrasena');
     Route::get('/calendario', [AdminController::class, 'calendario'])->name('calendario');
     Route::get('/periodos/crear', [AdminController::class, 'crearPeriodo'])->name('periodos.crear');
     Route::post('/periodos', [AdminController::class, 'guardarPeriodo'])->name('periodos.guardar');
     Route::get('/eventos/crear', [AdminController::class, 'crearEvento'])->name('eventos.crear');
     Route::post('/eventos', [AdminController::class, 'guardarEvento'])->name('eventos.guardar');
+    Route::delete('/eventos/{evento}', [AdminController::class, 'eliminarEvento'])->name('eventos.eliminar');
     Route::get('/eventos/{evento}/inscritos', [AdminController::class, 'inscritos'])->name('inscritos');
     Route::get('/eventos/{evento}/inscritos/exportar', [AdminController::class, 'exportarInscritos'])->name('inscritos.exportar');
     Route::get('/asistencia/{token}', [EventoAsistenciaController::class, 'confirmar'])->name('asistencia.confirmar');
@@ -51,4 +59,7 @@ Route::middleware('auth.admin')->prefix('admin')->name('admin.')->group(function
     Route::post('/eventos/{evento}/encuestas', [AdminController::class, 'guardarEncuesta'])->name('encuestas.guardar');
     Route::get('/funcionarios/importar', [AdminController::class, 'formularioImportar'])->name('funcionarios.importar');
     Route::post('/funcionarios/importar', [AdminController::class, 'importarFuncionarios'])->name('funcionarios.importar.guardar');
+    Route::get('/usuarios', [AdminUsuariosController::class, 'index'])->name('usuarios.index');
+    Route::patch('/usuarios/{user}/estado', [AdminUsuariosController::class, 'actualizarEstado'])->name('usuarios.estado');
+    Route::put('/usuarios/{user}/contrasena', [AdminUsuariosController::class, 'actualizarContrasena'])->name('usuarios.contrasena');
 });

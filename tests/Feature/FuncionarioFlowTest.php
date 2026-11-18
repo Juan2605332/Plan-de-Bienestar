@@ -3,6 +3,7 @@
 use App\Models\Evento;
 use App\Models\FuncionarioPerfil;
 use App\Models\PeriodoInscripcion;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 
 test('una persona no autenticada es redirigida al acceso', function () {
@@ -12,8 +13,9 @@ test('una persona no autenticada es redirigida al acceso', function () {
 
 test('un funcionario activo puede acceder a sus datos con una sesión válida', function () {
     $this->seed();
+    $usuario = User::factory()->create(['email' => FuncionarioPerfil::findOrFail(1)->email]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('funcionario.formulario'))
         ->assertOk()
         ->assertSee('Actualización de datos');
@@ -21,9 +23,10 @@ test('un funcionario activo puede acceder a sus datos con una sesión válida', 
 
 test('un funcionario no puede inscribirse en un evento de otro género', function () {
     $this->seed();
+    $usuario = User::factory()->create(['email' => FuncionarioPerfil::findOrFail(1)->email]);
     $evento = crearEvento(['dirigido_a_genero' => 'FEMENINO']);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('eventos.inscribir', $evento))
         ->assertSessionHas('mensaje', 'No cumples las condiciones para inscribirte en este evento.');
 
@@ -35,9 +38,10 @@ test('un funcionario no puede inscribirse en un evento de otro género', functio
 
 test('un funcionario puede inscribirse una sola vez y el cupo se respeta', function () {
     $this->seed();
+    $usuario = User::factory()->create(['email' => FuncionarioPerfil::findOrFail(1)->email]);
     $evento = crearEvento(['cupo_maximo' => 1]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('eventos.inscribir', $evento))
         ->assertSessionHas('success');
 
@@ -47,7 +51,7 @@ test('un funcionario puede inscribirse una sola vez y el cupo se respeta', funct
         'estado' => 'INSCRITO',
     ]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('eventos.inscribir', $evento))
         ->assertSessionHas('mensaje', 'Ya estás inscrito en este evento.');
 
@@ -57,36 +61,39 @@ test('un funcionario puede inscribirse una sola vez y el cupo se respeta', funct
 test('un evento puede restringirse por rango de edad', function () {
     $this->seed();
     $funcionario = FuncionarioPerfil::findOrFail(1);
+    $usuario = User::factory()->create(['email' => $funcionario->email]);
     $edad = Carbon::today()->diffInYears($funcionario->fecha_nacimiento);
     $evento = crearEvento([
         'edad_minima' => $edad + 1,
         'edad_maxima' => $edad + 10,
     ]);
 
-    $this->withSession(['funcionario_id' => $funcionario->id])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => $funcionario->id])
         ->get(route('eventos.index'))
         ->assertDontSee($evento->nombre);
 
-    $this->withSession(['funcionario_id' => $funcionario->id])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => $funcionario->id])
         ->post(route('eventos.inscribir', $evento))
         ->assertSessionHas('mensaje', 'No cumples las condiciones para inscribirte en este evento.');
 });
 
 test('un funcionario puede buscar eventos por texto', function () {
     $this->seed();
+    $usuario = User::factory()->create(['email' => FuncionarioPerfil::findOrFail(1)->email]);
     $evento = crearEvento(['nombre' => 'Taller de cocina saludable', 'lugar' => 'Auditorio principal']);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('eventos.index', ['buscar' => 'cocina']))
         ->assertSee($evento->nombre);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('eventos.index', ['buscar' => 'evento inexistente']))
         ->assertDontSee($evento->nombre);
 });
 
 test('los eventos fuera del periodo vigente no aparecen ni aceptan inscripciones', function () {
     $this->seed();
+    $usuario = User::factory()->create(['email' => FuncionarioPerfil::findOrFail(1)->email]);
     $evento = crearEvento([
         'periodo_id' => PeriodoInscripcion::create([
             'nombre' => 'Periodo cerrado',
@@ -97,11 +104,11 @@ test('los eventos fuera del periodo vigente no aparecen ni aceptan inscripciones
         ])->id,
     ]);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->get(route('eventos.index'))
         ->assertDontSee($evento->nombre);
 
-    $this->withSession(['funcionario_id' => 1])
+    $this->actingAs($usuario)->withSession(['funcionario_id' => 1])
         ->post(route('eventos.inscribir', $evento))
         ->assertSessionHas('mensaje', 'No cumples las condiciones para inscribirte en este evento.');
 });

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FuncionarioPerfil extends Model
 {
@@ -51,5 +52,10 @@ class FuncionarioPerfil extends Model
     public function respuestasEncuesta(): HasMany
     {
         return $this->hasMany(EncuestaRespuesta::class, 'funcionario_id');
+    }
+
+    public function usuario(): HasOne
+    {
+        return $this->hasOne(User::class, 'email', 'email');
     }
 }

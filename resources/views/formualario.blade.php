@@ -13,7 +13,7 @@
 
         /* Header */
         .fn-header {
-            background: linear-gradient(135deg, #0d2b1d, #103c2c);
+            background: linear-gradient(135deg, #0d2b1d, var(--profile-accent, #103c2c));
             border-bottom: 1px solid rgba(255,255,255,.06);
             position: sticky; top: 0; z-index: 20;
         }
@@ -24,8 +24,8 @@
         }
         .fn-badge {
             display: inline-flex; align-items: center; gap: .375rem;
-            background: rgba(168,224,99,.1); border: 1px solid rgba(168,224,99,.2);
-            color: #a8e063; font-size: .7rem; font-weight: 700;
+            background: color-mix(in srgb, var(--profile-accent, #1d6b3d) 12%, transparent); border: 1px solid color-mix(in srgb, var(--profile-accent, #1d6b3d) 30%, transparent);
+            color: var(--profile-accent, #1d6b3d); font-size: .7rem; font-weight: 700;
             letter-spacing: .06em; text-transform: uppercase;
             padding: .25rem .625rem; border-radius: 99px;
         }
@@ -135,7 +135,7 @@
         /* Buttons */
         .btn-submit {
             display: inline-flex; align-items: center; gap: .5rem;
-            background: linear-gradient(135deg, #1d6b3d, #23a05a);
+            background: var(--profile-accent, #1d6b3d);
             color: #fff; font-weight: 700; font-size: .875rem;
             padding: .75rem 1.5rem; border-radius: .625rem;
             border: none; cursor: pointer; font-family: 'Inter', sans-serif;
@@ -152,7 +152,7 @@
         .btn-secondary:hover { background: #e4eee5; }
         .btn-add {
             display: inline-flex; align-items: center; gap: .5rem;
-            background: #103c2c; color: #a8e063; font-weight: 600; font-size: .8125rem;
+            background: var(--profile-accent, #103c2c); color: #fff; font-weight: 600; font-size: .8125rem;
             padding: .55rem 1rem; border-radius: .625rem;
             border: none; cursor: pointer; font-family: 'Inter', sans-serif;
             transition: background .15s;
@@ -160,7 +160,7 @@
         .btn-add:hover { background: #0d2b1d; }
     </style>
 </head>
-<body>
+<body style="--profile-accent: {{ $usuario->profile_color }}">
 
 {{-- Header --}}
 <header class="fn-header">
@@ -194,6 +194,12 @@
 </header>
 
 <main class="fn-main">
+    @if (session('success'))
+        <div role="status" style="background:#eaf7f0;border:1px solid #b9d9c2;color:#1d6b3d;border-radius:.75rem;padding:.75rem 1rem;margin-bottom:1rem;">{{ session('success') }}</div>
+    @endif
+    @if ($errors->any())
+        <div role="alert" style="background:#fff0f0;border:1px solid #efc2c2;color:#9a2929;border-radius:.75rem;padding:.75rem 1rem;margin-bottom:1rem;">{{ $errors->first() }}</div>
+    @endif
     {{-- Page title --}}
     <div style="margin-bottom:1.75rem;">
         <span style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8aab98;">Perfil institucional</span>
@@ -201,27 +207,34 @@
         <p style="margin-top:.25rem;font-size:.875rem;color:#5a7a65;">{{ $funcionario->nombres }} {{ $funcionario->apellidos }}</p>
     </div>
 
-    @if($puedeActualizar)
-    <div role="status" style="margin-bottom:1rem;background:#eaf7f0;border:1px solid #b9d9c2;color:#1d6b3d;border-radius:.75rem;padding:.875rem 1rem;font-size:.875rem;">
-        @if($periodo?->estaAbierto())
-            Puedes actualizar tus datos hasta el {{ $periodo->fecha_cierre->format('d/m/Y H:i') }}.
-        @else
-            Tienes autorización administrativa para actualizar tus datos hasta el {{ $autorizacion->expira_en->format('d/m/Y H:i') }}.
-        @endif
-    </div>
-    @else
-    <div role="status" style="margin-bottom:1rem;background:#fff8e4;border:1px solid #e7d39d;color:#7a5b11;border-radius:.75rem;padding:.875rem 1rem;font-size:.875rem;">
-        @if($periodo)
-            El período «{{ $periodo->nombre }}» está cerrado. Tus datos solo podrán cambiarse cuando se habilite un nuevo período o un administrador autorice la edición.
-        @else
-            No hay un período de actualización abierto. Tus datos están en modo de solo lectura; comunícate con el administrador si necesitas corregirlos.
-        @endif
-    </div>
-    @endif
-
-    <form action="{{ route('funcionario.guardar') }}" method="POST">
+    <form action="{{ route('funcionario.guardar') }}" method="POST" enctype="multipart/form-data">
         @csrf
-        <fieldset @disabled(!$puedeActualizar) style="border:0;padding:0;margin:0;min-width:0;">
+
+        <div class="fn-section">
+            <div class="fn-section-header">
+                <div class="fn-section-icon"><svg width="16" height="16" fill="none" stroke="#a8e063" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+                <div>
+                    <p style="font-size:.8rem;font-weight:700;color:#1a3828;">Foto y personalización</p>
+                    <p style="font-size:.75rem;color:#5a7a65;margin-top:.1rem;">Personaliza el color de tu perfil y carga una foto opcional (JPG, PNG o WebP; máximo 2 MB).</p>
+                </div>
+            </div>
+            <div class="fn-section-body" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <img id="foto-perfil-preview" src="{{ $usuario->profile_photo_path ? route('funcionario.foto') : '' }}" alt="Vista previa de foto de perfil" style="width:76px;height:76px;object-fit:cover;border-radius:50%;border:3px solid var(--profile-accent);{{ $usuario->profile_photo_path ? '' : 'display:none;' }}">
+                <span id="foto-perfil-placeholder" style="width:76px;height:76px;display:{{ $usuario->profile_photo_path ? 'none' : 'flex' }};align-items:center;justify-content:center;border-radius:50%;background:var(--profile-accent);color:#fff;font-size:1.5rem;font-weight:700;">{{ strtoupper(substr($funcionario->nombres, 0, 1)) }}</span>
+                <label class="fn-label" style="flex:1;min-width:220px;">
+                    Foto de perfil
+                    <input id="foto-perfil-input" type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp" class="fn-field">
+                </label>
+                <label class="fn-label" style="min-width:180px;">
+                    Color del perfil
+                    <select name="profile_color" class="fn-field">
+                        @foreach(['#1d6b3d' => 'Verde SENA', '#2563eb' => 'Azul', '#7c3aed' => 'Violeta', '#ea580c' => 'Naranja'] as $color => $nombreColor)
+                            <option value="{{ $color }}" @selected(old('profile_color', $usuario->profile_color) === $color)>{{ $nombreColor }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
+        </div>
 
         {{-- Contacto --}}
         <div class="fn-section" style="animation: fadeUp .3s ease both;">
@@ -236,6 +249,18 @@
             </div>
             <div class="fn-section-body">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                    <label class="fn-label">
+                        Nombres
+                        <input type="text" name="nombres" value="{{ old('nombres', $funcionario->nombres) }}" required maxlength="100" class="fn-field">
+                    </label>
+                    <label class="fn-label">
+                        Apellidos
+                        <input type="text" name="apellidos" value="{{ old('apellidos', $funcionario->apellidos) }}" required maxlength="100" class="fn-field">
+                    </label>
+                    <label class="fn-label">
+                        Correo de acceso
+                        <input type="email" name="email" value="{{ old('email', $funcionario->email) }}" required maxlength="150" class="fn-field">
+                    </label>
                     <label class="fn-label">
                         Teléfono / Celular
                         <input type="text" name="telefono" value="{{ old('telefono', $funcionario->telefono) }}" required class="fn-field" placeholder="300 000 0000">
@@ -383,6 +408,26 @@
         </div>
         </fieldset>
     </form>
+
+    <section class="fn-section" style="margin-top:1.5rem;">
+        <div class="fn-section-header">
+            <div class="fn-section-icon"><svg width="16" height="16" fill="none" stroke="#a8e063" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+            <div>
+                <p style="font-size:.8rem;font-weight:700;color:#1a3828;">Cambiar contraseña</p>
+                <p style="font-size:.75rem;color:#5a7a65;margin-top:.1rem;">Confirma tu contraseña actual para establecer una nueva (mínimo 10 caracteres).</p>
+            </div>
+        </div>
+        <div class="fn-section-body">
+            <form action="{{ route('funcionario.contrasena.actualizar') }}" method="POST" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;align-items:end;">
+                @csrf
+                @method('PUT')
+                <label class="fn-label">Contraseña actual<input type="password" name="current_password" required autocomplete="current-password" class="fn-field"></label>
+                <label class="fn-label">Nueva contraseña<input type="password" name="password" required minlength="10" autocomplete="new-password" class="fn-field"></label>
+                <label class="fn-label">Confirmar contraseña<input type="password" name="password_confirmation" required minlength="10" autocomplete="new-password" class="fn-field"></label>
+                <button type="submit" class="btn-submit">Actualizar contraseña</button>
+            </form>
+        </div>
+    </section>
 </main>
 
 {{-- Modal familiar --}}
@@ -476,6 +521,22 @@ document.getElementById('guardar-familiar').addEventListener('click', () => {
 });
 
 document.querySelectorAll('[data-quitar-familiar]').forEach(btn => btn.addEventListener('click', () => btn.closest('[data-familiar-row]').remove()));
+
+const fotoInput = document.getElementById('foto-perfil-input');
+const fotoPreview = document.getElementById('foto-perfil-preview');
+const fotoPlaceholder = document.getElementById('foto-perfil-placeholder');
+let fotoTemporal = null;
+
+fotoInput.addEventListener('change', () => {
+    const archivo = fotoInput.files[0];
+    if (!archivo) return;
+
+    if (fotoTemporal) URL.revokeObjectURL(fotoTemporal);
+    fotoTemporal = URL.createObjectURL(archivo);
+    fotoPreview.src = fotoTemporal;
+    fotoPreview.style.display = 'block';
+    fotoPlaceholder.style.display = 'none';
+});
 </script>
 </body>
 </html>

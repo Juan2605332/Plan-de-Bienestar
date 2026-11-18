@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\FuncionarioPerfil;
 use App\Models\User;
 use Database\Seeders\AdminUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,13 +54,50 @@ it('redirige al panel cuando ingresa un administrador valido', function () {
         'is_admin' => true,
     ]);
 
-    $response = $this->post(route('ingresar'), [
-        'usuario' => $administrador->email,
-        'password' => 'password',
-    ]);
+    $response = $this->withSession(['funcionario_id' => 1])
+        ->post(route('ingresar'), [
+            'usuario' => $administrador->email,
+            'password' => 'password',
+        ]);
 
     $response->assertRedirect(route('admin.dashboard'));
+    $response->assertSessionMissing('funcionario_id');
     $this->assertAuthenticatedAs($administrador);
+});
+
+it('permite a un usuario normal autenticarse y entrar a su perfil de funcionario', function () {
+    $this->seed();
+    $funcionario = FuncionarioPerfil::findOrFail(1);
+    $usuario = User::factory()->create([
+        'email' => $funcionario->email,
+        'is_admin' => false,
+    ]);
+
+    $this->post(route('ingresar'), [
+        'usuario' => $usuario->email,
+        'password' => 'password',
+    ])
+        ->assertRedirect(route('funcionario.formulario'))
+        ->assertSessionHas('funcionario_id', $funcionario->id);
+
+    $this->assertAuthenticatedAs($usuario);
+    $this->get(route('funcionario.formulario'))
+        ->assertOk()
+        ->assertSee('Actualización de datos');
+});
+
+it('rechaza un usuario normal que no tiene un perfil de funcionario activo', function () {
+    $usuario = User::factory()->create(['is_admin' => false]);
+
+    $this->from(route('acceso'))
+        ->post(route('ingresar'), [
+            'usuario' => $usuario->email,
+            'password' => 'password',
+        ])
+        ->assertRedirect(route('acceso'))
+        ->assertSessionHas('mensaje', 'No hay un perfil de funcionario activo asociado a este usuario.');
+
+    $this->assertGuest();
 });
 
 it('rechaza credenciales invalidas', function () {
