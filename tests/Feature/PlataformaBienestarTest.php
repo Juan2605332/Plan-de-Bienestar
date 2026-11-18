@@ -242,6 +242,8 @@ test('los reportes presentan participación por centro y exportan un CSV', funct
         ->get(route('admin.reportes', ['anio' => now()->year]))
         ->assertOk()
         ->assertSee($evento->nombre)
+        ->assertSee('Detalle por evento y centro de formación')
+        ->assertSee('Eventos reportados')
         ->assertSee('5.00')
         ->assertSee('100.00%');
 

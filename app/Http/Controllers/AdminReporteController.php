@@ -104,6 +104,7 @@ class AdminReporteController extends Controller
                 $funcionarios = (int) ($activosPorCentro[$centro->id] ?? 0);
 
                 $filas[] = [
+                    'evento_id' => $evento->id,
                     'evento' => $evento->nombre,
                     'fecha' => $evento->fecha_evento->format('Y-m-d'),
                     'centro' => $centro->nombre,
